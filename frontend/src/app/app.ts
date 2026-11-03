@@ -1,7 +1,8 @@
 import { Component, ElementRef, OnInit, OnDestroy, signal, computed, inject, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription, switchMap, takeWhile, timer } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { EMPTY, Subscription, catchError, switchMap, takeWhile, timer } from 'rxjs';
 import { AnalysisService } from './services/analysis.service';
 import { TrafficPlanner } from './traffic/traffic-planner';
 import { CaptureDialog } from './capture/capture-dialog';
@@ -235,13 +236,25 @@ export class App implements OnInit, OnDestroy {
   private watch(id: string) {
     this.poll?.unsubscribe();
     let first = true;
+    let failures = 0;
     this.poll = timer(0, POLL_MS)
       .pipe(
-        switchMap(() => this.api.get(id)),
+        switchMap(() =>
+          this.api.get(id).pipe(
+            // Swallow transient errors so polling survives a network hiccup, also on the first load
+            // (a just-created inspection must keep updating); a 404 means it is gone, so stop at once.
+            catchError(err => {
+              failures++;
+              if ((err instanceof HttpErrorResponse && err.status === 404) || failures >= 5) throw err;
+              return EMPTY;
+            })
+          )
+        ),
         takeWhile(detail => this.isRunning(detail.status), true)
       )
       .subscribe({
         next: detail => {
+          failures = 0;
           const wasRunning = this.isRunning(this.selectedAnalysis()?.status) && this.selectedAnalysis()?.id === id;
           this.applyAnalysis(detail, first || (wasRunning && !this.isRunning(detail.status)));
           this.syncSummary(detail);
