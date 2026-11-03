@@ -26,7 +26,10 @@ internal sealed class InspectionToolSession(
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };
     private readonly Stopwatch _watch = Stopwatch.StartNew();
     private readonly List<AgentActionTrace> _actions = [];
-    private readonly List<string> _warnings = [];
+    // Each warning remembers the tool that raised it, so repeating a step drops the warnings it invalidates.
+    private static readonly string[] Pipeline = ["segment_image", "measure_segments", "diagnose_distresses", "compute_report", "assess_mobility", "verify_report"];
+    private readonly List<(string Tool, string Text)> _warnings = [];
+    private string _tool = "";
     private readonly Guid _runId = Guid.NewGuid();
     private readonly QuantityEstimator _quantities = new(Options.Create(profile.Pavement));
     private readonly AgentRunTrace? _selection = inspection.Trace?.Orchestration;
@@ -55,6 +58,7 @@ internal sealed class InspectionToolSession(
             "assess_mobility" => "MobilityPlanner", "verify_report" => "IndependentReviewer", _ => "Coordinator"
         };
         var model = "deterministic-code";
+        _tool = name;
         AgentToolResult result;
         try
         {
@@ -64,6 +68,7 @@ internal sealed class InspectionToolSession(
             switch (name)
             {
                 case "load_region":
+                    ResetWarningsFrom(name);
                     _regionLoaded = true;
                     if (!profile.JurisdictionValidated) Warn("Perfil regional de referencia; no acredita conformidad normativa local.");
                     if (!profile.PricesAvailable) Warn("Falta un libro de precios local. No se emitirá presupuesto para esta región.");
@@ -71,6 +76,7 @@ internal sealed class InspectionToolSession(
                     break;
                 case "load_city_network":
                     Require(_regionLoaded, "Carga primero el perfil regional.");
+                    ResetWarningsFrom(name);
                     if (_selection?.Latitude is { } latitude && _selection.Longitude is { } longitude)
                     {
                         try
@@ -95,6 +101,7 @@ internal sealed class InspectionToolSession(
                         : options.SegmentationConcepts.ToArray();
                     Require(requestedConcepts.Length is > 0 and <= 8 && requestedConcepts.All(c => options.SegmentationConcepts.Contains(c, StringComparer.OrdinalIgnoreCase)), "Usa únicamente conceptos de deterioro habilitados en Analysis:SegmentationConcepts.");
                     _concepts = requestedConcepts;
+                    ResetWarningsFrom(name);
                     _measured.Clear(); _diagnosis = null; _computed = false; _verified = false; _mobilityDone = false;
                     _segmentation = null;
                     _segmentation = await segmenter.SegmentAsync(new SegmentationRequest(payload, _concepts), cancellationToken);
@@ -108,6 +115,7 @@ internal sealed class InspectionToolSession(
                     break;
                 case "measure_segments":
                     Require(_segmentation is not null, "Ejecuta segment_image primero.");
+                    ResetWarningsFrom(name);
                     _diagnosis = null; _computed = false; _verified = false; _mobilityDone = false;
                     Advance(AnalysisStage.Measuring);
                     var projection = GroundProjection.Create(inspection.ReferenceWidthM, inspection.Calibration, (double)image.Height / image.Width);
@@ -121,6 +129,7 @@ internal sealed class InspectionToolSession(
                     break;
                 case "diagnose_distresses":
                     Require(_regionLoaded && _measured.Count > 0, "Se requieren perfil regional y medidas.");
+                    ResetWarningsFrom(name);
                     _diagnosis = null; _computed = false; _verified = false; _mobilityDone = false;
                     Advance(AnalysisStage.Reasoning);
                     await SaveProgressAsync(cancellationToken);
@@ -134,6 +143,7 @@ internal sealed class InspectionToolSession(
                     break;
                 case "compute_report":
                     Require(_diagnosis is not null, "Ejecuta diagnose_distresses primero.");
+                    ResetWarningsFrom(name);
                     _computed = false; _verified = false; _mobilityDone = false;
                     ValidateDiagnosis(_diagnosis!);
                     Advance(AnalysisStage.Computing);
@@ -162,6 +172,7 @@ internal sealed class InspectionToolSession(
                     break;
                 case "assess_mobility":
                     Require(_computed && _cityAssessed, "Calcula el informe y ejecuta load_city_network antes de evaluar movilidad.");
+                    ResetWarningsFrom(name);
                     if (profile.Id == "pe-puno" && !string.IsNullOrWhiteSpace(inspection.RoadSegmentId))
                     {
                         var plan = await mobility.PlanAsync(new SimulateWorkZoneCommand(inspection.RoadSegmentId, 1, Language: inspection.Language), cancellationToken);
@@ -179,18 +190,19 @@ internal sealed class InspectionToolSession(
                 case "verify_report":
                     Require(_computed && _mobilityDone, "Se requieren informe calculado y evaluación de movilidad.");
                     Require(double.IsFinite(_area) && _area > 0 && double.IsFinite(_pci) && _pci is >= 0 and <= 100, "Las medidas o el índice no son válidos.");
+                    ResetWarningsFrom(name);
                     var audit = await auditor.ReviewAsync(Serialize(new
                     {
                         language = inspection.Language.ToString(), profile = new { profile.Name, profile.Version, profile.JurisdictionValidated, profile.Sources },
                         findings = _diagnosis!.Findings, measurements = _measured.Select(m => new { m.Segment.Index, m.Measurement }),
-                        pci = _pci, surveyedAreaM2 = _area, budget = profile.PricesAvailable ? costs.Estimate(Draft()) : null, warnings = _warnings,
+                        pci = _pci, surveyedAreaM2 = _area, budget = profile.PricesAvailable ? costs.Estimate(Draft()) : null, warnings = Warnings,
                         mobility = _mobilityJson is null ? (JsonElement?)null : JsonSerializer.Deserialize<JsonElement>(_mobilityJson)
                     }), cancellationToken);
                     foreach (var issue in audit.Issues) Warn(issue);
                     model = audit.Model;
                     _reviewStatus = _warnings.Count > 0 || audit.Status != "Ready" ? "NeedsReview" : "Ready";
                     _verified = true;
-                    result = Ok(new { status = _reviewStatus, issues = _warnings, numericChecks = "Passed: geometry, coverage, quantities and PCI are computed and range checked by code." });
+                    result = Ok(new { status = _reviewStatus, issues = Warnings, numericChecks = "Passed: geometry, coverage, quantities and PCI are computed and range checked by code." });
                     break;
                 case "finish":
                     Require(_verified, "Ejecuta verify_report antes de terminar.");
@@ -234,7 +246,7 @@ internal sealed class InspectionToolSession(
         _concepts.Select(c => new ConceptTrace(c, _segmentation?.Segments.Count(s => s.Concept.Equals(c, StringComparison.OrdinalIgnoreCase)) ?? 0)).ToArray(),
         _segmentationMs, _reasoningMs, _diagnosis?.Attempts ?? 1, (_segmentation?.Segments.Count ?? 0) - _measured.Count,
         new AgentRunTrace(_runId, coordinator.Engine, coordinator.Model, status, RegionalCatalog.Snapshot(profile), _selection?.Latitude, _selection?.Longitude,
-            _actions.ToArray(), _warnings.Distinct(StringComparer.Ordinal).ToArray(), usage?.Calls ?? 0, usage?.InputTokens ?? 0, usage?.OutputTokens ?? 0, _mobilityJson));
+            _actions.ToArray(), Warnings, usage?.Calls ?? 0, usage?.InputTokens ?? 0, usage?.OutputTokens ?? 0, _mobilityJson));
 
     private async Task SaveProgressAsync(CancellationToken cancellationToken)
     {
@@ -250,7 +262,15 @@ internal sealed class InspectionToolSession(
         Require(diagnosis.Steps.All(s => s.TargetSegmentIndex is null || expected.Contains(s.TargetSegmentIndex.Value)), "Un paso apunta a un segmento desconocido.");
     }
     private void Advance(AnalysisStage stage) { if (inspection.Stage is null || inspection.Stage < stage) inspection.AdvanceTo(stage); }
-    private void Warn(string warning) { if (!_warnings.Contains(warning, StringComparer.Ordinal)) _warnings.Add(warning); }
+    private string[] Warnings => _warnings.Select(w => w.Text).ToArray();
+    private void Warn(string warning) { if (!_warnings.Exists(w => w.Text == warning)) _warnings.Add((_tool, warning)); }
+
+    /// <summary>Drops the warnings of <paramref name="tool"/> and, for a pipeline step, of every step that depends on it.</summary>
+    private void ResetWarningsFrom(string tool)
+    {
+        var from = Array.IndexOf(Pipeline, tool);
+        _warnings.RemoveAll(w => w.Tool == tool || (from >= 0 && Array.IndexOf(Pipeline, w.Tool) >= from));
+    }
     private static void Require(bool condition, string message) { if (!condition) throw new ModelOutputException(message); }
     private static AgentToolResult Ok(object evidence) => new(true, Serialize(evidence));
     private static string Serialize(object evidence) => JsonSerializer.Serialize(evidence, Json);
