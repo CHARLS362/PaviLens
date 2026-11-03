@@ -111,25 +111,26 @@ cp .env.example .env
 Open `.env` and fill in:
 
 ```dotenv
-PAVELENS_AI_PROVIDER=Meta
 META_API_KEY=<your Meta API key>
-PAVELENS_SEGMENTATION_SERVICE=Roboflow
-ROBOFLOW_API_KEY=<your Roboflow key>
 ```
+
+Any Meta API key works on its own. With the defaults (`Auto`) the API switches to the real models, segments with SAM 3.1 on Meta using the same key, and on startup lists the models the key can use (`GET /v1/models`) to pick the best ones: the newest Muse Wonder, else the newest Muse Spark, and the newest SAM. `-contributor` models, which share data for training, are never chosen. The startup log and `GET /api/v1/ai/status` show the models picked.
 
 | Variable | Used for | Where to get it |
 |---|---|---|
-| `PAVELENS_AI_PROVIDER` | `Simulation` (demo) or `Meta` (real models) | — |
+| `PAVELENS_AI_PROVIDER` | `Auto` (default: `Meta` when `META_API_KEY` is set, else demo), `Simulation` or `Meta` | — |
 | `META_API_KEY` | Muse Wonder: diagnosis, assistant, traffic plan, agent coordinator. Also SAM 3.1 when the segmentation service is `Meta`. | https://dev.meta.ai |
-| `PAVELENS_SEGMENTATION_SERVICE` | `Roboflow` (SAM 3, default), `Meta` (SAM 3.1 direct) or `Sidecar` | — |
+| `PAVELENS_SEGMENTATION_SERVICE` | `Auto` (default: `Roboflow` when `ROBOFLOW_API_KEY` is set, else `Meta`), `Roboflow` (SAM 3), `Meta` (SAM 3.1 direct) or `Sidecar` | — |
 | `ROBOFLOW_API_KEY` | SAM 3 on Roboflow's serverless API | https://app.roboflow.com → Settings → API Keys |
 | `META_SAM31_API_KEY` | Optional: a separate key for SAM 3.1 | https://dev.meta.ai |
-| `META_REASONING_MODEL` | Optional: model name, default `muse-wonder-1.0` | — |
+| `META_REASONING_MODEL` | Optional: a fixed model name; empty or `auto` picks the best available | — |
 
 Two working setups:
 
-- **Meta + Roboflow** (two keys): `PAVELENS_SEGMENTATION_SERVICE=Roboflow`, `META_API_KEY`, `ROBOFLOW_API_KEY`.
-- **Meta only** (one key, SAM 3.1 direct): `PAVELENS_SEGMENTATION_SERVICE=Meta` and `META_API_KEY`. It also needs the mask decoder once. `start.ps1` / `start.sh` install it automatically; by hand:
+- **Meta only** (one key, SAM 3.1 direct, the default): just `META_API_KEY`.
+- **Meta + Roboflow** (two keys): `META_API_KEY` and `ROBOFLOW_API_KEY`.
+
+SAM 3.1 direct needs the mask decoder once. `start.ps1` / `start.sh` install it automatically; by hand:
 
   ```bash
   cd backend/tools/sam31
@@ -145,7 +146,7 @@ Restart the API after editing `.env`. Then check:
 - http://localhost:5000/api/v1/ai/status reports `Meta` with both keys configured;
 - the *Demo mode* badge in the top bar is replaced by the model names.
 
-With `PAVELENS_AI_PROVIDER=Meta` the API **refuses to start** if a required key is missing, and says which one. It never falls back to demo results silently.
+In Meta mode the API **refuses to start** if a required key is missing, and says which one. It never falls back to demo results silently.
 
 ### Precedence and other ways to set keys
 

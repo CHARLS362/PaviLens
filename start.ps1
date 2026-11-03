@@ -46,14 +46,17 @@ if (-not (Test-Path $envFile)) {
     Write-Host '  ok using existing .env' -ForegroundColor Green
 }
 $config = Read-DotEnv $envFile
-$provider = if ($config['PAVELENS_AI_PROVIDER']) { $config['PAVELENS_AI_PROVIDER'] } else { 'Simulation' }
-$segmentation = if ($config['PAVELENS_SEGMENTATION_SERVICE']) { $config['PAVELENS_SEGMENTATION_SERVICE'] } else { 'Roboflow' }
+$provider = if ($config['PAVELENS_AI_PROVIDER']) { $config['PAVELENS_AI_PROVIDER'] } else { 'Auto' }
+$segmentation = if ($config['PAVELENS_SEGMENTATION_SERVICE']) { $config['PAVELENS_SEGMENTATION_SERVICE'] } else { 'Auto' }
+# Auto: a Meta key alone turns on the real models, with SAM 3.1 on Meta unless a Roboflow key is set.
+if ($provider -eq 'Auto') { $provider = if ($config['META_API_KEY']) { 'Meta' } else { 'Simulation' } }
+if ($segmentation -eq 'Auto') { $segmentation = if ($config['ROBOFLOW_API_KEY']) { 'Roboflow' } else { 'Meta' } }
 if ($provider -eq 'Meta') {
     if (-not $config['META_API_KEY']) { Fail 'PAVELENS_AI_PROVIDER=Meta needs META_API_KEY in .env' }
     if ($segmentation -eq 'Roboflow' -and -not $config['ROBOFLOW_API_KEY']) { Fail 'PAVELENS_SEGMENTATION_SERVICE=Roboflow needs ROBOFLOW_API_KEY in .env' }
     Write-Host "  ok real Meta models - segmentation: $segmentation" -ForegroundColor Green
 } else {
-    Write-Host '  ok demo mode (Simulation). Set PAVELENS_AI_PROVIDER=Meta in .env to use the real models.' -ForegroundColor Green
+    Write-Host '  ok demo mode (Simulation). Put your META_API_KEY in .env to use the real models.' -ForegroundColor Green
 }
 
 # 3. Dependencies

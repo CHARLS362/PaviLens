@@ -15,7 +15,7 @@ internal sealed class MetaChatClient(HttpClient http, IOptions<AiOptions> option
     private readonly EndpointOptions _endpoint = options.Value.Meta.Reasoning;
     private readonly MetaOptions _meta = options.Value.Meta;
 
-    public string Model => _endpoint.Model;
+    public string Model => MetaModelSelector.Effective(_endpoint.Model, MetaModelSelector.FallbackReasoning);
 
     public static JsonObject System(string text) => new() { ["role"] = "system", ["content"] = text };
 
@@ -44,7 +44,7 @@ internal sealed class MetaChatClient(HttpClient http, IOptions<AiOptions> option
     {
         var payload = new JsonObject
         {
-            ["model"] = _endpoint.Model,
+            ["model"] = Model,
             ["messages"] = new JsonArray(messages.Select(m => (JsonNode)m.DeepClone()).ToArray())
         };
         if (_meta.Temperature is { } temperature)

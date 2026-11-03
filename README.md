@@ -48,18 +48,15 @@ Both models are consumed through hosted APIs, so no GPU or model server is neede
 | Step | Model | Service | Key |
 |---|---|---|---|
 | Segmentation | Meta SAM 3 (Roboflow serverless) or SAM 3.1 (Meta Model API) | `PAVELENS_SEGMENTATION_SERVICE` = `Roboflow` / `Meta` | `ROBOFLOW_API_KEY`, or `META_API_KEY` for SAM 3.1 |
-| Diagnosis, assistant, traffic plan, agent coordinator | Meta Muse Wonder (`muse-wonder-1.0`) | `https://api.meta.ai/v1`, OpenAI-compatible | `META_API_KEY` |
+| Diagnosis, assistant, traffic plan, agent coordinator | Meta Muse Wonder, or the best Muse model the key can use | `https://api.meta.ai/v1`, OpenAI-compatible | `META_API_KEY` |
 
 Keys go in a git-ignored **`.env` file at the repository root**, created from [`.env.example`](.env.example):
 
 ```dotenv
-PAVELENS_AI_PROVIDER=Meta
 META_API_KEY=<Meta API key>
-PAVELENS_SEGMENTATION_SERVICE=Roboflow
-ROBOFLOW_API_KEY=<Roboflow key>
 ```
 
-Without keys, `PAVELENS_AI_PROVIDER` is `Simulation`. Results come from fixed scenarios keyed by the image hash and are labelled `engine: "Simulation"`, and the UI shows a *Demo mode* badge. Environment variables (`Ai__Meta__Reasoning__ApiKey`...) and `dotnet user-secrets` also work; keys never go in `appsettings.json`. Every option is explained in **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#5-use-the-real-meta-models-env)**.
+That one key is enough: the mode switches to Meta, segmentation uses SAM 3.1 on Meta, and on startup the API asks Meta which models the key can use and picks the best (newest Muse Wonder, else Muse Spark; newest SAM; never `-contributor` models). Add `ROBOFLOW_API_KEY` to segment with SAM 3 on Roboflow instead, or set `META_REASONING_MODEL` to fix a model. Without keys, the mode is `Simulation`. Results come from fixed scenarios keyed by the image hash and are labelled `engine: "Simulation"`, and the UI shows a *Demo mode* badge. Environment variables (`Ai__Meta__Reasoning__ApiKey`...) and `dotnet user-secrets` also work; keys never go in `appsettings.json`. Every option is explained in **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#5-use-the-real-meta-models-env)**.
 
 Every inspection shows the **Meta AI pipeline** panel, which traces the work stage by stage:
 - the concepts sent to SAM 3 and the masks returned;

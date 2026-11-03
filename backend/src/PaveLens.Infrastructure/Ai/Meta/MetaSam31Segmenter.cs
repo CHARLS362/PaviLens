@@ -49,6 +49,7 @@ internal sealed class MetaSam31Segmenter(HttpClient http, IOptions<AiOptions> op
 {
     private readonly MetaOptions _meta = options.Value.Meta;
     public AnalysisEngine Engine => AnalysisEngine.Meta;
+    private string Sam31Model => MetaModelSelector.Effective(_meta.Sam31.Model, MetaModelSelector.FallbackSegmentation);
 
     public async Task<SegmentationResult> SegmentAsync(SegmentationRequest request, CancellationToken cancellationToken)
     {
@@ -59,7 +60,7 @@ internal sealed class MetaSam31Segmenter(HttpClient http, IOptions<AiOptions> op
             {
                 Content = JsonContent.Create(new
                 {
-                    model = _meta.Sam31.Model, stream = false,
+                    model = Sam31Model, stream = false,
                     metadata = new { mask_encoding = "one_bit", include_confidence = "true" },
                     input = new[] { new { type = "message", role = "user", content = new object[]
                     {
@@ -90,7 +91,7 @@ internal sealed class MetaSam31Segmenter(HttpClient http, IOptions<AiOptions> op
             }
         }
         var segments = Sam3Instances.Deduplicate(instances).Select((s, i) => new Segment(i, s.Concept, s.Score, s.Polygon, s.Holes)).ToArray();
-        return new SegmentationResult(_meta.Sam31.Model, segments);
+        return new SegmentationResult(Sam31Model, segments);
     }
 
     private static NormalizedPoint[] Normalize((double X, double Y)[] ring, ImagePayload image) =>

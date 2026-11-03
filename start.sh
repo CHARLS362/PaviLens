@@ -27,8 +27,15 @@ if [ ! -f .env ]; then
 else
   echo "  ok using existing .env"
 fi
-provider="$(env_value PAVELENS_AI_PROVIDER)"; provider="${provider:-Simulation}"
-segmentation="$(env_value PAVELENS_SEGMENTATION_SERVICE)"; segmentation="${segmentation:-Roboflow}"
+provider="$(env_value PAVELENS_AI_PROVIDER)"; provider="${provider:-Auto}"
+segmentation="$(env_value PAVELENS_SEGMENTATION_SERVICE)"; segmentation="${segmentation:-Auto}"
+# Auto: a Meta key alone turns on the real models, with SAM 3.1 on Meta unless a Roboflow key is set.
+if [ "$provider" = "Auto" ]; then
+  if [ -n "$(env_value META_API_KEY)" ]; then provider=Meta; else provider=Simulation; fi
+fi
+if [ "$segmentation" = "Auto" ]; then
+  if [ -n "$(env_value ROBOFLOW_API_KEY)" ]; then segmentation=Roboflow; else segmentation=Meta; fi
+fi
 if [ "$provider" = "Meta" ]; then
   [ -n "$(env_value META_API_KEY)" ] || fail "PAVELENS_AI_PROVIDER=Meta needs META_API_KEY in .env"
   if [ "$segmentation" = "Roboflow" ]; then
@@ -36,7 +43,7 @@ if [ "$provider" = "Meta" ]; then
   fi
   echo "  ok real Meta models · segmentation: $segmentation"
 else
-  echo "  ok demo mode (Simulation). Set PAVELENS_AI_PROVIDER=Meta in .env to use the real models."
+  echo "  ok demo mode (Simulation). Put your META_API_KEY in .env to use the real models."
 fi
 
 echo "[3/4] Installing dependencies (first run only)..."

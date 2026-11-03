@@ -26,10 +26,11 @@ public static class DependencyInjection
         services.AddSingleton<IImageStorage>(sp =>
             new LocalImageStorage(sp.GetRequiredService<IOptions<StorageOptions>>(), contentRoot));
 
+        // Before the worker: hosted services start in order, and the model selector must finish first.
+        AddAi(services, configuration, contentRoot);
         services.AddSingleton<IInspectionQueue, InMemoryInspectionQueue>();
         services.AddHostedService<InspectionWorker>();
 
-        AddAi(services, configuration, contentRoot);
         services.AddSingleton<GeographicNetworkCache>();
         services.AddHttpClient<IGeographicNetworkProvider, OverpassNetworkProvider>(http =>
         {
@@ -88,10 +89,11 @@ public static class DependencyInjection
 
     private static void AddAi(IServiceCollection services, IConfiguration configuration, string contentRoot)
     {
-        services.AddOptions<AiOptions>().Bind(configuration.GetSection(AiOptions.SectionName)).ValidateOnStart();
+        services.AddOptions<AiOptions>().Bind(configuration.GetSection(AiOptions.SectionName))
+            .PostConfigure(o => o.Resolve()).ValidateOnStart();
         services.AddSingleton<IValidateOptions<AiOptions>, AiOptionsValidator>();
 
-        var options = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
+        var options = (configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions()).Resolve();
         if (options.Provider == AiProvider.Simulation)
         {
             services.AddSingleton<SimulationCatalog>();
@@ -117,6 +119,9 @@ public static class DependencyInjection
         services.AddHttpClient<MetaChatClient>((sp, http) =>
                 Configure(http, sp.GetRequiredService<IOptions<AiOptions>>().Value.Meta.Reasoning))
             .AddStandardResilienceHandler(o => ConfigureResilience(o, options.Meta.Reasoning));
+
+        services.AddHttpClient(MetaModelSelector.ClientName);
+        services.AddHostedService<MetaModelSelector>();
 
         services.AddTransient<IDiagnosticReasoner, MetaReasoner>();
         services.AddTransient<IMaintenanceAssistant, MetaMaintenanceAssistant>();

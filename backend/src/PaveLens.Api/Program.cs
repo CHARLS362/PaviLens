@@ -53,7 +53,8 @@ builder.Services.AddRateLimiter(o =>
 
 var app = builder.Build();
 
-StartupLog.Configuration(app.Logger, dotEnvPath ?? "(no .env file)", configuration["Ai:Provider"] ?? "Simulation");
+var aiProvider = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<PaveLens.Infrastructure.Ai.AiOptions>>().Value.Provider.ToString();
+StartupLog.Configuration(app.Logger, dotEnvPath ?? "(no .env file)", aiProvider);
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

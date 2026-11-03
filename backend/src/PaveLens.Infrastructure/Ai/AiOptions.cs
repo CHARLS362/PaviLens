@@ -8,7 +8,10 @@ public enum AiProvider
     Simulation,
 
     /// <summary>Meta SAM 3 for masks and Muse Wonder for reasoning.</summary>
-    Meta
+    Meta,
+
+    /// <summary>Meta when a Meta API key is configured, Simulation otherwise.</summary>
+    Auto
 }
 
 public enum SegmentationService
@@ -19,24 +22,44 @@ public enum SegmentationService
     Roboflow,
 
     /// <summary>Self-hosted service implementing <c>POST /v1/segment</c> (docs/ai-contracts.md).</summary>
-    Sidecar
+    Sidecar,
+
+    /// <summary>Roboflow when its key is configured, otherwise SAM 3.1 on Meta with the Meta key.</summary>
+    Auto
 }
 
 public sealed class AiOptions
 {
     public const string SectionName = "Ai";
 
-    public AiProvider Provider { get; set; } = AiProvider.Simulation;
+    /// <summary>Model name resolved at startup to the best model the API key can use (see <c>MetaModelSelector</c>).</summary>
+    public const string AutoModel = "auto";
+
+    public AiProvider Provider { get; set; } = AiProvider.Auto;
     public MetaOptions Meta { get; set; } = new();
+
+    /// <summary>Replaces the <c>Auto</c> choices by what the configured keys allow, so a Meta key alone is enough.</summary>
+    public AiOptions Resolve()
+    {
+        if (Provider == AiProvider.Auto)
+            Provider = string.IsNullOrWhiteSpace(Meta.Reasoning.ApiKey) ? AiProvider.Simulation : AiProvider.Meta;
+        if (Meta.SegmentationService == SegmentationService.Auto)
+            Meta.SegmentationService = string.IsNullOrWhiteSpace(Meta.Segmentation.ApiKey) ? SegmentationService.Meta : SegmentationService.Roboflow;
+        return this;
+    }
 }
 
 public sealed class MetaOptions
 {
-    public EndpointOptions Sam31 { get; set; } = new() { BaseUrl = new Uri("https://api.meta.ai/v1/"), Model = "sam-3.1", TimeoutSeconds = 60 };
+    public EndpointOptions Sam31 { get; set; } = new() { BaseUrl = new Uri("https://api.meta.ai/v1/"), Model = AiOptions.AutoModel, TimeoutSeconds = 60 };
     public string Sam31ParserScript { get; set; } = "../../tools/sam31/decode.mjs";
     public string NodeExecutable { get; set; } = "node";
     public int MaxSpecialistOutputTokens { get; set; } = 8192;
-    public SegmentationService SegmentationService { get; set; } = SegmentationService.Roboflow;
+    public SegmentationService SegmentationService { get; set; } = SegmentationService.Auto;
+
+    /// <summary>Model families tried in order when a model is <c>auto</c>; the newest version of the first available family wins.</summary>
+    public string[] ReasoningFamilies { get; set; } = ["muse-wonder", "muse-spark"];
+    public string[] SegmentationFamilies { get; set; } = ["sam"];
 
     /// <summary>SAM 3 endpoint (see docs/ai-contracts.md).</summary>
     public EndpointOptions Segmentation { get; set; } = new()
@@ -53,7 +76,7 @@ public sealed class MetaOptions
     public EndpointOptions Reasoning { get; set; } = new()
     {
         BaseUrl = new Uri("https://api.meta.ai/v1/"),
-        Model = "muse-wonder-1.0",
+        Model = AiOptions.AutoModel,
         TimeoutSeconds = 120
     };
 

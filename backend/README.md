@@ -100,7 +100,7 @@ The prices are reference values for the demo. Replace them with the current cost
 
 ### Secrets
 
-The simplest way: copy `.env.example` (repository root) to `.env` and fill in `PAVELENS_AI_PROVIDER=Meta`, `META_API_KEY` and `ROBOFLOW_API_KEY`. The API reads the nearest `.env` on startup (skipped in the `Testing` environment); real environment variables override it, and it overrides user-secrets and appsettings. Full guide: [docs/GETTING_STARTED.md](../docs/GETTING_STARTED.md).
+The simplest way: copy `.env.example` (repository root) to `.env` and fill in `META_API_KEY` (one Meta key is enough; the best models it can use are picked on startup). The API reads the nearest `.env` on startup (skipped in the `Testing` environment); real environment variables override it, and it overrides user-secrets and appsettings. Full guide: [docs/GETTING_STARTED.md](../docs/GETTING_STARTED.md).
 
 Alternatively, with user-secrets:
 

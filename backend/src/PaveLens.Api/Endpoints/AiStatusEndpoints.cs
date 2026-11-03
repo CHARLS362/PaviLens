@@ -28,17 +28,25 @@ internal static class AiStatusEndpoints
         return TypedResults.Ok(new AiStatus(
             "Meta",
             new ModelStatus(
-                meta.SegmentationService == SegmentationService.Meta ? "SAM 3.1" : "SAM 3",
+                meta.SegmentationService == SegmentationService.Meta ? DisplayName(meta.Sam31.Model, "SAM 3.1") : "SAM 3",
                 segmentation.Model,
                 meta.SegmentationService.ToString(),
                 segmentation.BaseUrl?.Host,
                 !string.IsNullOrWhiteSpace(segmentation.ApiKey) || meta.SegmentationService == SegmentationService.Meta && !string.IsNullOrWhiteSpace(meta.Reasoning.ApiKey)),
             new ModelStatus(
-                "Muse Wonder",
+                DisplayName(meta.Reasoning.Model, "Muse Wonder"),
                 meta.Reasoning.Model,
                 "OpenAI-compatible",
                 meta.Reasoning.BaseUrl?.Host,
                 !string.IsNullOrWhiteSpace(meta.Reasoning.ApiKey))));
+    }
+
+    /// <summary>"muse-spark-1.3" → "Muse Spark 1.3", "sam-3.1" → "SAM 3.1".</summary>
+    private static string DisplayName(string model, string fallback)
+    {
+        var parts = model.Split('-', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2 || model == AiOptions.AutoModel) return fallback;
+        return string.Join(' ', parts.Select(p => p.Equals("sam", StringComparison.OrdinalIgnoreCase) ? "SAM" : char.ToUpperInvariant(p[0]) + p[1..]));
     }
 
     internal sealed record AiStatus(string Provider, ModelStatus? Segmentation, ModelStatus? Reasoning);

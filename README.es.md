@@ -91,18 +91,15 @@ Los modelos se consumen por API: no hace falta GPU ni servidor propio.
 | Paso | Modelo | Servicio | Clave |
 |---|---|---|---|
 | Segmentación | Meta SAM 3 (Roboflow serverless) o SAM 3.1 (Meta Model API) | `PAVELENS_SEGMENTATION_SERVICE` = `Roboflow` / `Meta` | `ROBOFLOW_API_KEY`, o `META_API_KEY` para SAM 3.1 |
-| Diagnóstico, asistente, plan de tránsito y coordinador de agentes | Meta Muse Wonder (`muse-wonder-1.0`) | `https://api.meta.ai/v1`, compatible con OpenAI | `META_API_KEY` |
+| Diagnóstico, asistente, plan de tránsito y coordinador de agentes | Meta Muse Wonder, o el mejor modelo Muse que permita la clave | `https://api.meta.ai/v1`, compatible con OpenAI | `META_API_KEY` |
 
 Las claves van en un **archivo `.env` en la raíz del repositorio**, que Git ignora y se crea a partir de [`.env.example`](.env.example):
 
 ```dotenv
-PAVELENS_AI_PROVIDER=Meta
 META_API_KEY=<clave de Meta>
-PAVELENS_SEGMENTATION_SERVICE=Roboflow
-ROBOFLOW_API_KEY=<clave de Roboflow>
 ```
 
-Sin claves, `PAVELENS_AI_PROVIDER` vale `Simulation`: los resultados vienen de escenarios fijos identificados por el hash de la imagen, quedan marcados con `engine: "Simulation"` y la interfaz muestra la insignia *Modo demostración*. También sirven las variables de entorno (`Ai__Meta__Reasoning__ApiKey`...) y `dotnet user-secrets`; las claves nunca van en `appsettings.json`. Todas las opciones están en **[docs/INSTALACION.es.md](docs/INSTALACION.es.md#5-usar-los-modelos-reales-de-meta-env)**.
+Con esa sola clave basta: el modo pasa a Meta, la segmentación usa SAM 3.1 en Meta y, al arrancar, la API pregunta a Meta qué modelos permite la clave y elige los mejores (el Muse Wonder más nuevo, si no Muse Spark; el SAM más nuevo; nunca modelos `-contributor`). Con `ROBOFLOW_API_KEY` la segmentación usa SAM 3 en Roboflow, y `META_REASONING_MODEL` fija un modelo concreto. Sin claves, el modo es `Simulation`: los resultados vienen de escenarios fijos identificados por el hash de la imagen, quedan marcados con `engine: "Simulation"` y la interfaz muestra la insignia *Modo demostración*. También sirven las variables de entorno (`Ai__Meta__Reasoning__ApiKey`...) y `dotnet user-secrets`; las claves nunca van en `appsettings.json`. Todas las opciones están en **[docs/INSTALACION.es.md](docs/INSTALACION.es.md#5-usar-los-modelos-reales-de-meta-env)**.
 
 ## Hoja de ruta
 
