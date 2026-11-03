@@ -320,6 +320,7 @@
 
 .samples { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
 .samples-title { font-size: 0.8125rem; font-weight: 600; color: var(--text-2); }
+.samples-note { font-size: 0.75rem; color: var(--muted); margin: 0; }
 .samples-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .sample {
   display: flex;

@@ -78,6 +78,7 @@ public sealed partial class InspectionProcessor(
     private static string Describe(Exception ex) => ex switch
     {
         GroundProjectionException => $"Calibración no válida: {ex.Message}",
+        NoDistressFoundException => ex.Message,
         ModelOutputException or DomainException => $"Respuesta del modelo no válida: {ex.Message}",
         ModelUnavailableException or HttpRequestException or TimeoutException => $"Servicio de IA no disponible: {ex.Message}",
         IOException => $"Error de almacenamiento: {ex.Message}",

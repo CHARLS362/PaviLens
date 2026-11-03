@@ -66,7 +66,9 @@ Every inspection shows the **Meta AI pipeline** panel, which traces the work sta
 
 ## Quick start
 
-Requirements: **.NET 10 SDK** and **Node.js 22.22+ or 24**. No keys, database server or GPU needed for the demo.
+Requirements: **Git**, the **.NET 10 SDK** and **Node.js 22.22+ or 24**. No database server, Docker or GPU. The only thing you add is your Meta API key.
+
+**1. Clone**
 
 ```bash
 git clone https://github.com/CHARLS362/PaviLens.git
@@ -76,10 +78,26 @@ git clone https://github.com/CHARLS362/PaviLens.git
 cd PaviLens
 ```
 
-Windows:
+**2. Add your Meta API key.** Copy the template to `.env`:
 
 ```powershell
-.\start.ps1
+Copy-Item .env.example .env
+```
+
+(macOS / Linux: `cp .env.example .env`). Open `.env`, paste your key after `META_API_KEY=` and save:
+
+```dotenv
+META_API_KEY=paste-your-meta-api-key-here
+```
+
+Get a key at https://dev.meta.ai. Skip this step to run the free **demo mode** instead.
+
+**3. Start**
+
+Windows (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start.ps1
 ```
 
 macOS / Linux:
@@ -88,12 +106,16 @@ macOS / Linux:
 bash start.sh
 ```
 
-The script checks the prerequisites, creates `.env` from `.env.example` (demo mode), installs the frontend packages on the first run and starts both parts.
+The script checks the prerequisites, installs the packages on the first run (1–3 minutes) and starts the API and the web app.
 
-- Web: http://localhost:4200 (proxies `/api` to the backend)
-- API: http://localhost:5000, with interactive docs at `/scalar`
+**4. Open http://localhost:4200**, click **New inspection**, upload a real road photo, set the scale and click **Analyse**.
 
-Step-by-step guide, manual start, real Meta keys and troubleshooting: **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)**.
+- API: http://localhost:5000, with interactive docs at `/scalar`.
+- With real Meta models, use a real road photo: the three built-in sample scenes are drawings meant for demo mode.
+
+📘 Manuals:
+- **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)**: installation step by step, manual start, every configuration option and troubleshooting.
+- **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)**: how to use every screen, from taking the photo to the budget and the detour plan.
 
 In Development, the backend uses SQLite, applies the migrations and seeds three demo inspections: Jr. Lima (calibrated angled photo), Av. El Sol (pothole) and Jr. Arequipa (alligator cracking).
 
@@ -117,6 +139,8 @@ meta/
 
 ## Documentation
 
+- [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md): installation, configuration and troubleshooting.
+- [docs/USER_GUIDE.md](docs/USER_GUIDE.md): user manual for every screen.
 - [backend/README.md](backend/README.md): running, configuration and API reference.
 - [backend/docs/ARCHITECTURE.md](backend/docs/ARCHITECTURE.md): layers, pipeline, engineering models and storage.
 - [backend/docs/ai-contracts.md](backend/docs/ai-contracts.md): contracts with SAM 3 and Muse Wonder.
@@ -124,7 +148,7 @@ meta/
 
 ## Tests
 
-143 backend tests (unit and integration) and 10 frontend tests. Run the tests from `backend/` because `global.json` lives there:
+160 backend tests (unit and integration) and 14 frontend tests. Run the tests from `backend/` because `global.json` lives there:
 
 ```bash
 cd backend

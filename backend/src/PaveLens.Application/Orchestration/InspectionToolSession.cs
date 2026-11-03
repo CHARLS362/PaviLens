@@ -42,7 +42,7 @@ internal sealed class InspectionToolSession(
     private double _area;
     private double _pci;
     private long _segmentationMs, _reasoningMs;
-    private bool _regionLoaded, _computed, _mobilityDone, _verified, _finished;
+    private bool _regionLoaded, _computed, _mobilityDone, _verified, _finished, _nothingFound;
     private string _reviewStatus = "NeedsReview";
     private string[] _reviewIssues = [];
     private string? _summary;
@@ -116,7 +116,9 @@ internal sealed class InspectionToolSession(
                     _segmentation = await segmenter.SegmentAsync(new SegmentationRequest(payload, _concepts), cancellationToken);
                     _segmentationMs += timer.ElapsedMilliseconds;
                     model = _segmentation.Model;
-                    Require(_segmentation.Segments.Count > 0, "El modelo de segmentación no encontró deterioros en la imagen.");
+                    // Repeating the same photo and concepts cannot change this, so the run ends after this step is traced.
+                    _nothingFound = _segmentation.Segments.Count == 0;
+                    Require(!_nothingFound, "El modelo de segmentación no encontró deterioros en la imagen.");
                     Require(_segmentation.Segments.Count <= limits.MaxSegments, "Hay demasiados segmentos para una evaluación verificable. Reduce el área de la fotografía.");
                     Require(_segmentation.Segments.Select(s => s.Index).Distinct().Count() == _segmentation.Segments.Count, "La segmentación repitió identificadores.");
                     _measured.Clear(); _diagnosis = null; _computed = false; _verified = false; _mobilityDone = false;
@@ -249,6 +251,10 @@ internal sealed class InspectionToolSession(
         _actions.Add(new AgentActionTrace(agent, name, model, result.Success ? "Succeeded" : "Rejected", timer.ElapsedMilliseconds, result.Evidence,
             result.Success ? _summary : result.Evidence, (ModelUsageMeter.Current?.Tokens ?? 0) - tokensBefore));
         await SaveProgressAsync(cancellationToken);
+        if (_nothingFound)
+            throw new NoDistressFoundException(Say(
+                $"{model} no encontró deterioros en la foto. Usa una foto real de la calzada, cercana y con buena luz.",
+                $"{model} found no distress in the photo. Use a real, close-up and well-lit photo of the pavement."));
         return result;
     }
 

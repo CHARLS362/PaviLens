@@ -116,7 +116,7 @@ Los jueces calificarán las entregas en una escala estricta basada en **4 pilare
 
 ## 7. Checklist Final de Entrega
 
-- [x] Backend compilado con Clean Architecture (.NET 10), 133 pruebas de backend y 10 de frontend y API REST documentada en Scalar (`/scalar`).
+- [x] Backend compilado con Clean Architecture (.NET 10), 160 pruebas de backend y 14 de frontend y API REST documentada en Scalar (`/scalar`).
 - [x] README en inglés para el jurado global; interfaz ES/EN e informes de Muse Wonder en el idioma elegido.
 - [x] Escenas de muestra en el diálogo de captura y gestos táctiles en el visor.
 - [x] Adaptadores de modelos Meta por API: SAM 3 (Roboflow serverless) y Muse Wonder (`api.meta.ai`).

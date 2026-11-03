@@ -85,6 +85,29 @@ public class OrchestrationApiTests
         Assert.Equal("Rejected", detail.Trace!.Orchestration!.Actions[^1].Status);
     }
 
+    [Fact]
+    public async Task APhotoWithoutDistressStopsRightAfterSegmentation()
+    {
+        await using var factory = new PaveLensApiFactory { Segmenter = new EmptySegmenter() };
+        using var client = factory.CreateClient();
+        using var form = PaveLensApiFactory.Upload("av-el-sol-bache.jpg");
+        using var created = await client.PostAsync("/api/v1/inspections", form, TestContext.Current.CancellationToken);
+        var pending = await created.Content.ReadFromJsonAsync<InspectionDetailDto>(PaveLensApiFactory.Json, TestContext.Current.CancellationToken);
+        var detail = await PaveLensApiFactory.WaitForAnalysisAsync(client, pending!.Id, TestContext.Current.CancellationToken);
+        Assert.Equal(InspectionStatus.Failed, detail.Status);
+        Assert.Contains("no encontró deterioros", detail.FailureReason, StringComparison.Ordinal);
+        var last = detail.Trace!.Orchestration!.Actions[^1];
+        Assert.Equal(("segment_image", "Rejected"), (last.Tool, last.Status));
+        Assert.Single(detail.Trace.Orchestration.Actions, a => a.Tool == "segment_image");
+    }
+
+    private sealed class EmptySegmenter : IDistressSegmenter
+    {
+        public AnalysisEngine Engine => AnalysisEngine.Simulation;
+        public Task<SegmentationResult> SegmentAsync(SegmentationRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(new SegmentationResult("test-segmenter", []));
+    }
+
     private sealed class ResegmentingCoordinator : IInspectionCoordinator
     {
         public string Engine => "Simulation";

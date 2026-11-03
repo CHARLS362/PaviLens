@@ -591,6 +591,8 @@ export const EN: Record<string, string> = {
   'No se pudo leer la imagen; el archivo puede estar dañado.': 'Could not read the image; the file may be damaged.',
   'Elige cómo se tomó la foto.': 'Choose how the photo was taken.',
   '¿Sin una foto a mano? Prueba con una escena de muestra': 'No photo at hand? Try a sample scene',
+  'Son escenas dibujadas: con los modelos Meta reales, SAM puede no encontrar daños en ellas. Para una prueba real, sube una foto de una calzada.':
+    'These scenes are drawn: with the real Meta models, SAM may find no damage in them. For a real test, upload a photo of a road.',
   'No se pudo cargar la foto de muestra.': 'Could not load the sample photo.',
   'Jr. Lima · tramo de 25 m': 'Jr. Lima · 25 m segment',
   'En ángulo · 6 deterioros': 'Angled · 6 distresses',

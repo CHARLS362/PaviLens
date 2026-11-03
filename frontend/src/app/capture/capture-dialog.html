@@ -67,6 +67,9 @@
             }
             <section class="samples" [attr.aria-busy]="loadingSample()">
               <h3 class="samples-title">{{ '¿Sin una foto a mano? Prueba con una escena de muestra' | t }}</h3>
+              @if (provider() === 'Meta') {
+                <p class="samples-note">{{ 'Son escenas dibujadas: con los modelos Meta reales, SAM puede no encontrar daños en ellas. Para una prueba real, sube una foto de una calzada.' | t }}</p>
+              }
               <div class="samples-list">
                 @for (s of samples; track s.file) {
                   <button class="sample" type="button" [disabled]="loadingSample()" (click)="useSample(s)">

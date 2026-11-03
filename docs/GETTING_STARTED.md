@@ -2,7 +2,65 @@
 
 From a fresh clone to a running PaveLens in about five minutes. Demo mode needs no keys and costs nothing. The real Meta models need one or two API keys in a `.env` file.
 
-*En español: [INSTALACION.es.md](INSTALACION.es.md)*
+*En español: [INSTALACION.es.md](INSTALACION.es.md)* · Once it runs, see the **[User guide](USER_GUIDE.md)** for how to use every screen.
+
+## Fast path: only your Meta API key
+
+If you already have Git, the .NET 10 SDK and Node.js 22.22+ (see [Prerequisites](#1-prerequisites)), these are the only steps:
+
+**1. Clone the repository**
+
+```bash
+git clone https://github.com/CHARLS362/PaviLens.git
+```
+
+```bash
+cd PaviLens
+```
+
+**2. Create `.env` and paste your Meta API key.** Copy the template:
+
+Windows (PowerShell):
+
+```powershell
+Copy-Item .env.example .env
+```
+
+macOS / Linux:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` in any text editor, find the line `META_API_KEY=` and paste your key after the `=` sign, with no spaces or quotes:
+
+```dotenv
+META_API_KEY=paste-your-meta-api-key-here
+```
+
+Save the file. Leave every other line as it is. Don't have a key yet? Create one at https://dev.meta.ai. If you skip this step, PaveLens runs in free **demo mode**.
+
+**3. Start PaveLens**
+
+Windows (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start.ps1
+```
+
+macOS / Linux:
+
+```bash
+bash start.sh
+```
+
+The first run installs the packages (1–3 minutes). On Windows, two new windows open: one for the API and one for the web app. Keep them open while you use PaveLens. Closing them stops it.
+
+**4. Open http://localhost:4200.** The top bar should show the Meta models, for example *SAM 3.1 · Muse Wonder 1.0*, instead of *Demo mode*. Click **New inspection**, upload a real photo of a road, set the scale and click **Analyse**. The [User guide](USER_GUIDE.md) walks through each step.
+
+> With real Meta models, upload a **real road photo**. The three built-in sample scenes are drawings: SAM usually finds no damage in them, and the analysis ends as *Failed* with that reason. They are meant for demo mode.
+
+The rest of this page explains each step in detail, the other configuration options and troubleshooting.
 
 ## 1. Prerequisites
 
@@ -90,7 +148,7 @@ On the first start the API creates the SQLite database (`backend/src/PaveLens.Ap
 1. Pick an inspection on the left: the photo shows each distress outlined and measured in metres, with the PCI and the quantities.
 2. Click a code in the **distress log** (right panel): the photo zooms onto it.
 3. Open the **Budget** tab: unit-price budget computed by code from the measured areas.
-4. **New inspection** → *Try a sample scene* → **Analyze**: the full pipeline runs again and the agent panel shows every tool call.
+4. **New inspection** → *Try a sample scene* → **Analyse**: the full pipeline runs again and the agent panel shows every tool call. (Sample scenes are for demo mode; with real Meta models, upload a real road photo.)
 5. **Detour planning** (top bar): close a lane on the Puno demo network and compare time windows.
 6. **ES / EN** switches the language; **Accessibility** sets text size, contrast, motion and a color-blind-safe palette.
 
@@ -193,4 +251,6 @@ The tests always run in demo mode and ignore `.env`, so they never spend credits
 | API exits with `Ai:Meta:...:ApiKey es obligatorio` | A key is missing in `.env` for the chosen provider/service. |
 | Real models return 401/403 | The key is wrong or the account has no access to the model; try it in the provider's console. |
 | SAM 3.1: `node` or `decode.mjs` not found | Run `npm ci` in `backend/tools/sam31` and make sure `node` is on the PATH. |
+| An inspection fails with *… found no distress in the photo* | SAM saw no damage. Expected with the drawn sample scenes in Meta mode; with your own photo, get closer, use even light and keep the damage in the lower half of the frame. See the [User guide](USER_GUIDE.md#9-taking-good-photos). |
+| The top bar still says *Demo mode* after adding the key | The API reads `.env` only on startup: close the API window and start it again. Check that the file is named exactly `.env` (not `.env.txt`) and sits next to `README.md`. |
 | Start over with clean demo data | Stop the API and delete `backend/src/PaveLens.Api/App_Data/`; it is recreated on the next start. |

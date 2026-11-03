@@ -712,6 +712,7 @@
     <app-capture-dialog
       [segments]="network()?.segments ?? []"
       [regions]="regions()"
+      [provider]="aiStatus()?.provider ?? null"
       [busy]="isUploading()"
       (submitted)="startNewAnalysis($event)"
       (closed)="showUploadModal.set(false)" />

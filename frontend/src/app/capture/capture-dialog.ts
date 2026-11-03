@@ -103,6 +103,8 @@ const SAMPLES: Sample[] = [
 export class CaptureDialog implements OnDestroy {
   segments = input<RoadSegment[]>([]);
   regions = input<RegionalConfiguration[]>([]);
+  /** The sample scenes are drawn, so the real Meta models may find nothing in them. */
+  provider = input<'Simulation' | 'Meta' | null>(null);
   regionId = signal('pe-puno');
   latitude = signal<number | null>(null);
   longitude = signal<number | null>(null);

@@ -13,5 +13,8 @@ public sealed class ConcurrencyConflictException(Exception inner)
 /// <summary>An AI provider answered, but the answer breaks the expected contract.</summary>
 public sealed class ModelOutputException(string message) : Exception(message);
 
+/// <summary>The segmenter found no distress in the photo, so there is nothing to measure and the run stops.</summary>
+public sealed class NoDistressFoundException(string message) : Exception(message);
+
 /// <summary>An AI provider could not be reached or returned an error status.</summary>
 public sealed class ModelUnavailableException(string message, Exception? inner = null) : Exception(message, inner);
