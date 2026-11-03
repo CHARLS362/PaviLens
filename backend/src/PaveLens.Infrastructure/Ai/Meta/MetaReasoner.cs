@@ -18,7 +18,8 @@ internal sealed class MetaReasoner(MetaChatClient chat) : IDiagnosticReasoner
 
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
-        Converters = { new JsonStringEnumConverter() },
+        // Names only: a number would map to an undefined value or silently to the wrong distress type.
+        Converters = { new JsonStringEnumConverter(allowIntegerValues: false) },
         AllowTrailingCommas = true,
         ReadCommentHandling = JsonCommentHandling.Skip
     };

@@ -34,6 +34,9 @@ internal static class Guard
         return trimmed;
     }
 
+    public static TEnum Defined<TEnum>(TEnum value, string name) where TEnum : struct, Enum =>
+        Enum.IsDefined(value) ? value : throw new DomainException($"{name} no es un valor válido: {value}.");
+
     public static double InRange(double value, double min, double max, string name)
     {
         if (double.IsNaN(value) || value < min || value > max)

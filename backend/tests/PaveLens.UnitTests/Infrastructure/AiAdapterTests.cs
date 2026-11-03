@@ -50,6 +50,17 @@ public class MetaReasonerParseTests
         Assert.Throws<ModelOutputException>(() => MetaReasoner.Parse(json, "muse-wonder"));
     }
 
+    [Theory]
+    [InlineData("\"Pothole\"", "42")]
+    [InlineData("\"Pothole\"", "0")]
+    [InlineData("\"High\"", "2")]
+    public void RejectsNumericEnumValues(string name, string number)
+    {
+        var json = ValidJson.Replace(name, number, StringComparison.Ordinal);
+
+        Assert.Throws<ModelOutputException>(() => MetaReasoner.Parse(json, "muse-wonder"));
+    }
+
     [Fact]
     public void RejectsNonJsonOutput()
     {

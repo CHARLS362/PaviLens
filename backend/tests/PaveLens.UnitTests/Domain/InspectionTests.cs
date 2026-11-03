@@ -106,6 +106,15 @@ public class InspectionTests
     }
 
     [Fact]
+    public void DistressRejectsUndefinedTypeOrSeverity()
+    {
+        Assert.Throws<DomainException>(() => Distress.Create("X1", (DistressType)42, Severity.Low, 0.9,
+            Square, 4, Measured, null, null, null, null));
+        Assert.Throws<DomainException>(() => Distress.Create("X1", DistressType.LongitudinalCrack, (Severity)7, 0.9,
+            Square, 4, Measured, null, null, null, null));
+    }
+
+    [Fact]
     public void CracksCannotCarryPatchQuantities()
     {
         Assert.Throws<DomainException>(() => Distress.Create("F1", DistressType.TransverseCrack, Severity.Low, 0.9,

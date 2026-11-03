@@ -67,8 +67,8 @@ public sealed class Distress : Entity
         var distress = new Distress
         {
             Code = Guard.NotBlank(code, "Code", 16),
-            Type = type,
-            Severity = severity,
+            Type = Guard.Defined(type, "Type"),
+            Severity = Guard.Defined(severity, "Severity"),
             Confidence = Guard.InRange(confidence, 0, 1, "Confidence"),
             Box = BoundingBox.FromPolygon(mask),
             Mask = mask.ToArray(),
