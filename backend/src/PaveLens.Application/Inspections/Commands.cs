@@ -16,7 +16,10 @@ public sealed record CreateInspectionCommand(
     CalibrationInput? Calibration,
     Stream Image,
     string? FileName,
-    ReportLanguage Language = ReportLanguage.Es);
+    ReportLanguage Language = ReportLanguage.Es,
+    string? RegionId = null,
+    double? Latitude = null,
+    double? Longitude = null);
 
 public sealed record AskQuestionCommand(Guid InspectionId, Guid? DistressId, string Question);
 
@@ -30,6 +33,10 @@ public sealed class CreateInspectionValidator : AbstractValidator<CreateInspecti
         RuleFor(c => c.Notes).MaximumLength(2000);
         RuleFor(c => c.Location).MaximumLength(200);
         RuleFor(c => c.RoadSegmentId).MaximumLength(64);
+        RuleFor(c => c.RegionId).MaximumLength(80);
+        RuleFor(c => c.Latitude).InclusiveBetween(-85, 85).When(c => c.Latitude.HasValue);
+        RuleFor(c => c.Longitude).InclusiveBetween(-180, 180).When(c => c.Longitude.HasValue);
+        RuleFor(c => c).Must(c => c.Latitude.HasValue == c.Longitude.HasValue).WithMessage("Indica latitud y longitud juntas.");
         RuleFor(c => c.ReferenceWidthM).InclusiveBetween(0.5, 100).When(c => c.ReferenceWidthM is not null);
         RuleFor(c => c.Image).NotNull();
         RuleFor(c => c.Calibration!).ChildRules(cal =>

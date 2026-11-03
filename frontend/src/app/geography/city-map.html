@@ -1,0 +1,37 @@
+<div class="geo-layout">
+  <section class="geo-view" aria-labelledby="geo-title">
+    <header><h1 id="geo-title">{{ 'Mapa de ciudades' | t }}</h1><p>{{ 'Calles reales y rutas de referencia. Sin aforos ni congestión en tiempo real.' | t }}</p></header>
+    <div class="geo-canvas" tabindex="0" role="group" [attr.aria-label]="'Mapa: usa flechas para desplazar y + o − para el zoom. También puedes elegir una calle desde la lista.' | t" (keydown)="onKey($event)">
+      <svg viewBox="0 0 800 600" aria-hidden="true">
+        @for (tile of tiles(); track tile.key) { <image [attr.href]="tile.url" [attr.x]="tile.x" [attr.y]="tile.y" width="256" height="256" /> }
+        @for (e of edges(); track e.id) { <path class="geo-edge" [class.selected]="e.id === selected()" [class.closed]="closure()?.closedEdgeId === e.id" [attr.d]="e.d" (click)="select(e.id)"><title>{{ e.name }} · {{ e.id }}</title></path> }
+        @for (r of routes(); track r.direction) { <path class="geo-route" [attr.d]="r.d" /> }
+      </svg>
+      <div class="geo-navigation" [attr.aria-label]="'Controles del mapa' | t">
+        <button (click)="zoomBy(1)" [disabled]="zoom() === 18" [attr.aria-label]="'Acercar' | t">+</button><button (click)="zoomBy(-1)" [disabled]="zoom() === 13" [attr.aria-label]="'Alejar' | t">−</button>
+        <button (click)="pan(0,-150)" [attr.aria-label]="'Mover al norte' | t">↑</button><button (click)="pan(-150,0)" [attr.aria-label]="'Mover al oeste' | t">←</button><button (click)="pan(150,0)" [attr.aria-label]="'Mover al este' | t">→</button><button (click)="pan(0,150)" [attr.aria-label]="'Mover al sur' | t">↓</button>
+      </div>
+      <a class="geo-credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors · ODbL</a>
+    </div>
+    <p class="geo-caption">{{ 'Rojo: tramo cerrado. Azul: desvío calculado. La selección de calles también está disponible por teclado en el panel.' | t }}</p>
+  </section>
+  <aside class="geo-panel">
+    <h2>{{ 'Área de estudio' | t }}</h2>
+    <div class="geo-presets">@for (p of places; track p.name) { <button class="btn btn-secondary" (click)="place(p)">{{ p.name }}</button> }</div>
+    <div class="geo-fields"><label for="geo-lat">{{ 'Latitud' | t }}</label><input id="geo-lat" type="number" min="-85" max="85" step="0.0001" [ngModel]="latitude()" (ngModelChange)="latitude.set($event)" /><label for="geo-lon">{{ 'Longitud geográfica' | t }}</label><input id="geo-lon" type="number" min="-180" max="180" step="0.0001" [ngModel]="longitude()" (ngModelChange)="longitude.set($event)" /><label for="geo-radius">{{ 'Radio del área' | t }}</label><select id="geo-radius" [ngModel]="radius()" (ngModelChange)="radius.set(+$event)"><option [ngValue]="300">300 m</option><option [ngValue]="600">600 m</option><option [ngValue]="1000">1000 m</option><option [ngValue]="1500">1500 m</option></select></div>
+    <button class="btn btn-primary" (click)="load()" [disabled]="busy()">{{ (busy() ? 'Consultando OpenStreetMap…' : 'Cargar calles del área') | t }}</button>
+    @if (error(); as error) { <p class="geo-error" role="alert">{{ error | t }}</p> }
+    <p role="status" class="geo-caption">@if (network(); as net) { {{ net.edges.length }} {{ 'tramos disponibles' | t }} · {{ net.retrievedAtUtc }} }</p>
+    @if (network()) {
+      <label for="geo-search">{{ 'Buscar calle' | t }}</label><input id="geo-search" type="search" [ngModel]="filter()" (ngModelChange)="search($event)" />
+      <label for="geo-edge">{{ 'Tramo donde se hará la obra' | t }}</label><select id="geo-edge" [ngModel]="selected()" (ngModelChange)="select($event)"><option value="" disabled>{{ 'Selecciona un tramo' | t }}</option>@for (e of choices(); track e.id) { <option [value]="e.id">{{ e.name }} · {{ e.id }}</option> }</select>
+      <p class="geo-caption">{{ 'Se muestran hasta 200 tramos. Usa la búsqueda para filtrar.' | t }}</p>
+      @if (edge(); as e) { <dl><div><dt>{{ 'Longitud' | t }}</dt><dd>{{ e.lengthM | number:'1.0-0' }} m</dd></div><div><dt>{{ 'Sentido' | t }}</dt><dd>{{ (e.forward && e.backward ? 'Doble sentido' : 'Sentido único') | t }}</dd></div><div><dt>{{ 'Velocidad de referencia' | t }}</dt><dd>{{ e.speedKmh | number:'1.0-0' }} km/h · {{ (e.speedAssumed ? 'supuesta' : 'dato OSM') | t }}</dd></div></dl> }
+      <button class="btn btn-primary" (click)="closeRoad()" [disabled]="!selected() || routing()">{{ (routing() ? 'Calculando…' : 'Cerrar tramo y buscar desvíos') | t }}</button>
+      @if (closure(); as closure) {
+        <section aria-live="polite"><h3>{{ 'Desvíos de referencia' | t }}</h3>@for (r of routes(); track r.direction) { <p>{{ r.direction === 'Forward' ? 'A → B' : 'B → A' }}: {{ r.distanceM | number:'1.0-0' }} m · {{ r.referenceTimeMin | number:'1.1-1' }} min</p> } @empty { <p>{{ 'No hay recorrido alternativo en el área importada.' | t }}</p> }</section>
+        <ul class="geo-notes">@for (warning of closure.warnings; track $index) { <li>{{ warning | t }}</li> }</ul>
+      } @else { <ul class="geo-notes">@for (warning of network()!.warnings; track $index) { <li>{{ warning | t }}</li> }</ul> }
+    }
+  </aside>
+</div>

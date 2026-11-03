@@ -39,6 +39,7 @@ internal sealed class MetaMaintenanceAssistant(MetaChatClient chat) : IMaintenan
         text.AppendLine(inspection.Language == ReportLanguage.En ? "Idioma de respuesta: inglés (English)" : "Idioma de respuesta: español");
         if (inspection.Location is not null) text.AppendLine(inv, $"Ubicación: {inspection.Location}");
         if (inspection.Notes is not null) text.AppendLine(inv, $"Notas del inspector: {inspection.Notes}");
+        if (inspection.Trace?.Orchestration is { } run) text.AppendLine(inv, $"Perfil regional y fuentes: {run.RegionalProfileJson}");
         text.AppendLine(inv, $"Diagnóstico global: {inspection.Summary}");
         if (inspection.Pci is { } pci)
         {

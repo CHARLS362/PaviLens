@@ -68,7 +68,7 @@ Los jueces calificarán las entregas en una escala estricta basada en **4 pilare
 | :--- | :--- |
 | **Impacto (30%)** | Una municipalidad con presupuesto pequeño obtiene, desde una foto de celular, el inventario de deterioros, un PCI comparable para priorizar tramos, el metrado y presupuesto auditables, y el costo del desvío en tráfico. Pensado para Puno (altiplano, heladas, radiación UV), con normas y precios configurables por región. |
 | **Herramientas de Meta (25%)** | **Meta SAM 3** segmenta por concepto de texto (*pothole*, *alligator crack*…) y entrega el contorno no convexo de cada deterioro, sin entrenar un modelo propio. **Muse Wonder** (`muse-wonder-1.0`, API de Meta) lee la foto junto con las medidas en metros y actúa como ingeniero de conservación: clasifica, asigna severidad ASTM D6433, redacta el protocolo de obra y responde preguntas de la cuadrilla. Ambos se consumen por API. |
-| **Profundidad Técnica (20%)** | **Clean Architecture en .NET 10** con 120 pruebas automatizadas de backend, interfaz e informes en español e inglés, EF Core (SQLite / PostgreSQL) y frontend **Angular 22** con signals. Homografía DLT para fotos oblicuas, área y momentos por teorema de Green (error < 1 % verificado contra la verdad de terreno), PCI ASTM D6433, APU MTC en PEN y equilibrio de Wardrop (Frank-Wolfe + BPR). Los números nunca salen del LLM: el modelo razona, el código calcula. |
+| **Profundidad Técnica (20%)** | **Clean Architecture en .NET 10** con 133 pruebas automatizadas de backend y 10 de frontend, interfaz e informes en español e inglés, EF Core (SQLite / PostgreSQL) y frontend **Angular 22** con signals. Homografía DLT para fotos oblicuas, área y momentos por teorema de Green (error < 1 % verificado contra la verdad de terreno), PCI ASTM D6433, APU MTC en PEN y equilibrio de Wardrop (Frank-Wolfe + BPR). Los números nunca salen del LLM: el modelo razona, el código calcula. |
 | **Demo en Vivo (25%)** | Foto con los contornos de cada deterioro, zoom hasta 600 % y cursor que muestra la posición en metros sobre la calzada. Panel con PCI, m², toneladas y presupuesto en soles que se recalcula al ingresar la profundidad medida. Captura con la cámara y calibración de 4 puntos con cuadrícula proyectada. Planificador de desvíos con mapa animado, costo social en soles y la franja de obra recomendada. |
 
 ---
@@ -110,22 +110,22 @@ Los jueces calificarán las entregas en una escala estricta basada en **4 pilare
 * **1:25 – 1:50 (Tráfico durante la obra):**
   * *"Al cerrar un carril, PaveLens resuelve el equilibrio de tráfico con Frank-Wolfe y la función BPR: cuántas horas-vehículo se pierden y qué calles absorben el desvío."* (Planificador de desvíos: cerrar Jr. Lima, ver los desvíos numerados y comparar S/ 456 en hora punta contra la noche).
 * **1:50 – 2:00 (Cierre):**
-  * *"PaveLens AI: los modelos de Meta ven el daño; la ingeniería lo mide, lo valoriza y planifica la obra. .NET 10, Angular 22 y 120 pruebas automatizadas."*
+  * *"PaveLens AI: los modelos de Meta ven el daño; la ingeniería lo mide, lo valoriza y planifica la obra. .NET 10, Angular 22 y más de 140 pruebas automatizadas."*
 
 ---
 
 ## 7. Checklist Final de Entrega
 
-- [x] Backend compilado con Clean Architecture (.NET 10), 120 pruebas automatizadas y API REST documentada en Scalar (`/scalar`).
+- [x] Backend compilado con Clean Architecture (.NET 10), 133 pruebas de backend y 10 de frontend y API REST documentada en Scalar (`/scalar`).
 - [x] README en inglés para el jurado global; interfaz ES/EN e informes de Muse Wonder en el idioma elegido.
-- [x] Expediente A4 imprimible (PDF), escenas de muestra en el diálogo de captura y gestos táctiles en el visor.
+- [x] Escenas de muestra en el diálogo de captura y gestos táctiles en el visor.
 - [x] Adaptadores de modelos Meta por API: SAM 3 (Roboflow serverless) y Muse Wonder (`api.meta.ai`).
 - [ ] Obtener las claves de Roboflow y de la API de Meta y probar una foto real de punta a punta.
 - [ ] Escenas con fotos reales (Wikimedia, CC BY-SA 4.0) con atribución visible.
-- [ ] Inicializar git y agregar `LICENSE`.
+- [x] Inicializar git y agregar `LICENSE` (MIT).
 - [x] Base de datos auto-migrada y poblada con escenas calibradas de demostración (SQLite / PostgreSQL).
 - [x] Modelado físico-matemático documentado en `PLANIFICACION.md`.
 - [x] Conceptualización completa del producto documentada en `tematica.md`.
-- [ ] Subir el repositorio a GitHub público o accesible para los jueces.
+- [x] Subir el repositorio a GitHub: https://github.com/CHARLS362/PaviLens
 - [ ] Grabar el video de demostración de 2 minutos siguiendo el guion.
 - [ ] Completar y enviar el formulario antes del **4 de Noviembre, 9:00 PM ET**.

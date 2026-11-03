@@ -1,7 +1,7 @@
 import { afterNextRender, Component, computed, ElementRef, inject, input, OnDestroy, output, signal, viewChild } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NewInspection, RoadSegment } from '../models/analysis.model';
+import { NewInspection, RoadSegment, RegionalConfiguration } from '../models/analysis.model';
 import { groundRect, homography, isConvexQuad, Point } from './homography';
 import { I18n, TranslatePipe } from '../i18n/i18n';
 
@@ -102,6 +102,10 @@ const SAMPLES: Sample[] = [
 })
 export class CaptureDialog implements OnDestroy {
   segments = input<RoadSegment[]>([]);
+  regions = input<RegionalConfiguration[]>([]);
+  regionId = signal('pe-puno');
+  latitude = signal<number | null>(null);
+  longitude = signal<number | null>(null);
   busy = input<boolean>(false);
   submitted = output<NewInspection>();
   closed = output<void>();
@@ -474,6 +478,8 @@ export class CaptureDialog implements OnDestroy {
     navigator.geolocation.getCurrentPosition(
       pos => {
         const { latitude, longitude, accuracy } = pos.coords;
+        this.latitude.set(latitude);
+        this.longitude.set(longitude);
         const where = `${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${Math.round(accuracy)} m)`;
         this.location.set(this.location() ? `${this.location()} · ${where}` : where);
         this.locating.set(false);
@@ -493,7 +499,7 @@ export class CaptureDialog implements OnDestroy {
         if (!this.scaleMode()) return false;
         return this.scaleMode() === 'nadir' ? this.widthM() >= 0.5 && this.widthM() <= 100 : this.calibrationValid();
       default:
-        return !!this.title().trim() && !this.busy();
+        return !!this.title().trim() && !this.busy() && this.validCoordinates();
     }
   });
 
@@ -510,7 +516,7 @@ export class CaptureDialog implements OnDestroy {
         if (this.corners().length < 4) return `Faltan ${4 - this.corners().length} esquinas por marcar.`;
         return 'Revisa las esquinas y las medidas del rectángulo.';
       default:
-        return this.busy() ? null : 'Escribe un título para la inspección.';
+        return !this.validCoordinates() ? 'Indica latitud y longitud válidas juntas, o deja ambas vacías.' : this.busy() ? null : 'Escribe un título para la inspección.';
     }
   });
 
@@ -519,6 +525,11 @@ export class CaptureDialog implements OnDestroy {
     if (this.step() === 'photo') this.step.set('scale');
     else if (this.step() === 'scale') this.step.set('details');
     else this.submit();
+  }
+
+  private validCoordinates() {
+    const lat = this.latitude(), lon = this.longitude();
+    return lat == null && lon == null || lat != null && lon != null && Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 85 && Math.abs(lon) <= 180;
   }
 
   back() {
@@ -538,6 +549,9 @@ export class CaptureDialog implements OnDestroy {
     const round = (v: number) => Math.round(v * 10000) / 10000;
     this.submitted.emit({
       title: this.title().trim(),
+      regionId: this.regionId(),
+      latitude: this.latitude() ?? undefined,
+      longitude: this.longitude() ?? undefined,
       notes: this.notes().trim() || undefined,
       location: this.location().trim() || undefined,
       roadSegmentId: this.segmentId() || undefined,

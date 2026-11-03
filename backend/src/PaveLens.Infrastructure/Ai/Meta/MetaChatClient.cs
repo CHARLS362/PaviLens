@@ -62,6 +62,33 @@ internal sealed class MetaChatClient(HttpClient http, IOptions<AiOptions> option
             payload["response_format"] = new JsonObject { ["type"] = "json_object" };
         }
 
+        var body = await SendAsync(payload, cancellationToken);
+        var content = body["choices"]?[0]?["message"]?["content"]?.GetValue<string>();
+        return string.IsNullOrWhiteSpace(content)
+            ? throw new ModelOutputException("El modelo devolvió una respuesta vacía.") : content;
+    }
+
+    public async Task<string> CompleteStructuredAsync(IReadOnlyList<JsonObject> messages, string name, JsonElement schema, CancellationToken cancellationToken)
+    {
+        var body = await SendAsync(new JsonObject
+        {
+            ["model"] = Model,
+            ["messages"] = new JsonArray(messages.Select(m => (JsonNode)m.DeepClone()).ToArray()),
+            ["max_completion_tokens"] = 2048,
+            ["response_format"] = new JsonObject
+            {
+                ["type"] = "json_schema",
+                ["json_schema"] = new JsonObject { ["name"] = name, ["strict"] = true, ["schema"] = JsonNode.Parse(schema.GetRawText()) }
+            }
+        }, cancellationToken);
+        return body["choices"]?[0]?["message"]?["content"]?.GetValue<string>()
+            ?? throw new ModelOutputException("El especialista no devolvió una respuesta estructurada.");
+    }
+
+    public async Task<JsonObject> SendAsync(JsonObject payload, CancellationToken cancellationToken)
+    {
+        if (!payload.ContainsKey("max_completion_tokens")) payload["max_completion_tokens"] = _meta.MaxSpecialistOutputTokens;
+        if (!payload.ContainsKey("reasoning_effort") && _meta.ReasoningEffort is { } effort) payload["reasoning_effort"] = effort;
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri("chat/completions", UriKind.Relative))
         {
             Content = JsonContent.Create(payload, options: Json)
@@ -77,10 +104,7 @@ internal sealed class MetaChatClient(HttpClient http, IOptions<AiOptions> option
         try
         {
             var body = await response.Content.ReadFromJsonAsync<JsonObject>(Json, cancellationToken);
-            var content = body?["choices"]?[0]?["message"]?["content"]?.GetValue<string>();
-            return string.IsNullOrWhiteSpace(content)
-                ? throw new ModelOutputException("El modelo devolvió una respuesta vacía.")
-                : content;
+            return body ?? throw new ModelOutputException("El modelo devolvió una respuesta vacía.");
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException)
         {

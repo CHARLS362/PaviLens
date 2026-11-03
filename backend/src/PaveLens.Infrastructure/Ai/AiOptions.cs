@@ -13,6 +13,8 @@ public enum AiProvider
 
 public enum SegmentationService
 {
+    /// <summary>SAM 3.1 directly through Meta Model API, decoded with Meta's official parser.</summary>
+    Meta,
     /// <summary>Meta SAM 3 on Roboflow's serverless API (<c>/sam3/concept_segment</c>). Only an API key is needed.</summary>
     Roboflow,
 
@@ -30,6 +32,10 @@ public sealed class AiOptions
 
 public sealed class MetaOptions
 {
+    public EndpointOptions Sam31 { get; set; } = new() { BaseUrl = new Uri("https://api.meta.ai/v1/"), Model = "sam-3.1", TimeoutSeconds = 60 };
+    public string Sam31ParserScript { get; set; } = "../../tools/sam31/decode.mjs";
+    public string NodeExecutable { get; set; } = "node";
+    public int MaxSpecialistOutputTokens { get; set; } = 8192;
     public SegmentationService SegmentationService { get; set; } = SegmentationService.Roboflow;
 
     /// <summary>SAM 3 endpoint (see docs/ai-contracts.md).</summary>
@@ -85,6 +91,11 @@ internal sealed class AiOptionsValidator : IValidateOptions<AiOptions>
 
         var errors = new List<string>();
         var meta = options.Meta;
+        if (meta.MaxSpecialistOutputTokens is < 512 or > 32768) errors.Add("Ai:Meta:MaxSpecialistOutputTokens debe estar entre 512 y 32768.");
+        if (meta.SegmentationService == SegmentationService.Meta &&
+            (meta.Sam31.BaseUrl is null || string.IsNullOrWhiteSpace(meta.Sam31.Model) || meta.Sam31.TimeoutSeconds is < 5 or > 600 ||
+             string.IsNullOrWhiteSpace(meta.Sam31ParserScript) || string.IsNullOrWhiteSpace(meta.NodeExecutable)))
+            errors.Add("Configura Ai:Meta:Sam31, Sam31ParserScript y NodeExecutable para usar SAM 3.1 directo.");
         if (meta.Segmentation.BaseUrl is null) errors.Add("Ai:Meta:Segmentation:BaseUrl es obligatorio con Provider=Meta.");
         if (meta.SegmentationService == SegmentationService.Roboflow && string.IsNullOrWhiteSpace(meta.Segmentation.ApiKey))
             errors.Add("Ai:Meta:Segmentation:ApiKey es obligatorio con SegmentationService=Roboflow.");

@@ -17,10 +17,6 @@ export const DEDUCT_LABELS: Record<DeductEntry['distress'], string> = {
   Rutting: 'Ahuellamiento'
 };
 
-export const SEVERITY_LABELS = { High: 'Alta', Medium: 'Media', Low: 'Baja' } as const;
-
-export const RISK_LABELS = { High: 'Alto', Medium: 'Medio', Low: 'Bajo' } as const;
-
 /** Cracks are sealed per metre; everything else is patched by area. */
 export function isCrack(type: DistressType): boolean {
   return type === 'LongitudinalCrack' || type === 'TransverseCrack';

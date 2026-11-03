@@ -25,6 +25,18 @@ export interface AnalysisTrace {
   reasoningMs: number;
   reasoningAttempts: number;
   skippedBeyondHorizon: number;
+  orchestration?: AgentRun;
+}
+
+export interface RegionalConfiguration {
+  id: string; name: string; version: string; countryCode: string;
+  jurisdictionValidated: boolean; pricesAvailable: boolean; latitude: number; longitude: number;
+}
+export interface AgentRun {
+  runId: string; engine: string; coordinatorModel: string; status: string;
+  regionalProfileJson: string; latitude?: number; longitude?: number;
+  actions: { agent: string; tool: string; model: string; status: string; durationMs: number; evidence: string }[];
+  warnings: string[]; modelCalls: number; inputTokens: number; outputTokens: number; mobilityJson?: string;
 }
 export type MessageRole = 'User' | 'Assistant';
 
@@ -217,6 +229,9 @@ export interface Answer {
 }
 
 export interface NewInspection {
+  regionId?: string;
+  latitude?: number;
+  longitude?: number;
   title: string;
   notes?: string;
   location?: string;

@@ -135,10 +135,10 @@ Angular 22 standalone component with signals:
 - The cursor position is shown in metres on the road surface. For oblique photos the frontend solves the same homography as the API.
 - A scale bar is drawn for nadir photos.
 - "Show on photo" zooms the viewer onto the distress; on touch screens two fingers pinch and one finger pans once zoomed in.
-- `PrintReport` is the A4 inspection file. It is hidden on screen; `@media print` hides the rest of the app, and the browser saves it as PDF, so no PDF library ships to the client.
 - `public/samples` holds byte-identical copies of the demo scenes, so a sample upload hits the same simulation scenario as the seed.
 - ES/EN. Spanish is the source language and each string is its own key. The `I18n` service and the `t` pipe look a string up in the `EN` dictionary, then in `EN_PATTERNS` for server texts with numbers, and otherwise fall back to the Spanish text. The choice is stored in `localStorage` and also sets the report language of new inspections and traffic plans.
 - Colours encode meaning only: severity, the five PCI bands of `PciCalculator.Classify`, and v/c on the traffic map.
+- Accessibility: `A11ySettings` keeps the user's display preferences (text size, high contrast, reduced motion, color-blind-safe palette) as data attributes on `<html>` that `styles.css` reads; every font size is in rem. The viewer is keyboard-operable and announces selection and zoom through a live region.
 
 ## API conventions
 

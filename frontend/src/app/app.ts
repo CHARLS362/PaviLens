@@ -5,9 +5,12 @@ import { Subscription, switchMap, takeWhile, timer } from 'rxjs';
 import { AnalysisService } from './services/analysis.service';
 import { TrafficPlanner } from './traffic/traffic-planner';
 import { CaptureDialog } from './capture/capture-dialog';
+import { AgentRunPanel } from './agents/agent-run-panel';
+import { CityMap } from './geography/city-map';
+import { RegionalConfiguration } from './models/analysis.model';
 import { homography } from './capture/homography';
 import { I18n, TranslatePipe } from './i18n/i18n';
-import { PrintReport } from './report/print-report';
+import { A11yPanel } from './a11y/a11y-panel';
 import { DEDUCT_LABELS, TYPE_LABELS, isCrack } from './labels';
 import {
   AiStatus,
@@ -28,7 +31,7 @@ import {
 
 type Toast = { kind: 'error' | 'info'; text: string };
 type Tab = 'distress' | 'budget' | 'traffic' | 'steps';
-type View = 'inspections' | 'planner';
+type View = 'inspections' | 'planner' | 'geography';
 
 const PIPELINE_STAGES = [
   'Imagen recibida · en cola',
@@ -46,11 +49,11 @@ const POLL_MS = 800;
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, TrafficPlanner, CaptureDialog, TranslatePipe, PrintReport],
+  imports: [CommonModule, FormsModule, TrafficPlanner, CaptureDialog, TranslatePipe, A11yPanel, AgentRunPanel, CityMap],
   templateUrl: './app.html',
-  styleUrl: './app.css',
 })
 export class App implements OnInit, OnDestroy {
+  regions = signal<RegionalConfiguration[]>([]);
   private api = inject(AnalysisService);
   readonly i18n = inject(I18n);
 
@@ -108,7 +111,6 @@ export class App implements OnInit, OnDestroy {
   // Budget (computed on the server from the stored quantities)
   budget = signal<Budget | null>(null);
   isLoadingBudget = signal<boolean>(false);
-  isPreparingPrint = signal<boolean>(false);
 
   // Traffic
   network = signal<RoadNetwork | null>(null);
@@ -192,6 +194,7 @@ export class App implements OnInit, OnDestroy {
   });
 
   ngOnInit() {
+    this.api.regions().subscribe({ next: profiles => this.regions.set(profiles), error: () => this.regions.set([]) });
     this.loadAnalyses();
     this.api.network().subscribe({ next: n => this.network.set(n), error: () => this.network.set(null) });
     this.api.aiStatus().subscribe({ next: st => this.aiStatus.set(st), error: () => this.aiStatus.set(null) });
@@ -460,6 +463,41 @@ export class App implements OnInit, OnDestroy {
     this.view.set({ s: 1, x: 0, y: 0 });
   }
 
+  /** Keyboard for the focused viewer: + and − zoom, 0 resets, arrows pan the zoomed photo. */
+  onViewerKey(event: KeyboardEvent, canvas: HTMLElement) {
+    if (event.target !== canvas || event.ctrlKey || event.metaKey || event.altKey) return;
+    const step = event.shiftKey ? 120 : 40;
+    const pan: Record<string, [number, number]> = {
+      ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step]
+    };
+    if (event.key === '+' || event.key === '=') this.zoomBy(1.5, canvas);
+    else if (event.key === '-' || event.key === '_') this.zoomBy(1 / 1.5, canvas);
+    else if (event.key === '0') this.resetView();
+    else if (pan[event.key] && this.view().s > 1) {
+      const [dx, dy] = pan[event.key];
+      this.view.update(v => ({ ...v, x: v.x + dx, y: v.y + dy }));
+    } else return;
+    event.preventDefault();
+  }
+
+  /** Spoken name of a distress for its label button and the selection announcement. */
+  distressLabel(d: Distress): string {
+    const size = isCrack(d.type)
+      ? `${d.measurement.lengthM.toFixed(2)} m`
+      : `${d.measurement.areaM2.toFixed(2)} m²`;
+    return this.i18n.t('{code}: {type}, severidad {sev}, {size}', {
+      code: d.code, type: this.typeLabel(d.type), sev: this.severityLabel(d.severity).toLowerCase(), size
+    });
+  }
+
+  /** Read by screen readers when the selected distress or the zoom changes. */
+  viewerAnnouncement = computed(() => {
+    const d = this.selectedDistress();
+    const zoom = Math.round(this.view().s * 100);
+    const selected = d ? this.i18n.t('Seleccionado {name}.', { name: this.distressLabel(d) }) : '';
+    return `${selected} ${this.i18n.t('Zoom {z} %', { z: zoom })}`.trim();
+  });
+
   /** Zooms keeping the image point under (clientX, clientY) fixed on screen. */
   private zoomAt(factor: number, stage: HTMLElement, clientX: number, clientY: number) {
     const v = this.view();
@@ -592,30 +630,6 @@ export class App implements OnInit, OnDestroy {
       error: err => {
         this.isSavingDepth.set(false);
         this.showToast('error', AnalysisService.describe(err, 'No se pudo guardar la profundidad.'));
-      }
-    });
-  }
-
-  /** Prints the inspection file; the budget is fetched first so the paper always carries it. */
-  printReport() {
-    const current = this.selectedAnalysis();
-    if (!current || current.status !== 'Completed') return;
-    if (this.budget()?.inspectionId === current.id) {
-      window.print();
-      return;
-    }
-    this.isPreparingPrint.set(true);
-    this.api.budget(current.id).subscribe({
-      next: b => {
-        this.isPreparingPrint.set(false);
-        if (this.selectedAnalysis()?.id !== b.inspectionId) return;
-        this.budget.set(b);
-        // Let the report render the budget before the print dialog snapshots the page.
-        setTimeout(() => window.print(), 100);
-      },
-      error: err => {
-        this.isPreparingPrint.set(false);
-        this.showToast('error', AnalysisService.describe(err, 'No se pudo calcular el presupuesto.'));
       }
     });
   }

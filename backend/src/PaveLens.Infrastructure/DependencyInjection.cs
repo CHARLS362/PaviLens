@@ -5,6 +5,9 @@ using PaveLens.Infrastructure.Ai.Simulation;
 using PaveLens.Infrastructure.Persistence;
 using PaveLens.Infrastructure.Processing;
 using PaveLens.Infrastructure.Storage;
+using PaveLens.Application.Orchestration;
+using PaveLens.Application.Geography;
+using PaveLens.Infrastructure.Geography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,7 +29,14 @@ public static class DependencyInjection
         services.AddSingleton<IInspectionQueue, InMemoryInspectionQueue>();
         services.AddHostedService<InspectionWorker>();
 
-        AddAi(services, configuration);
+        AddAi(services, configuration, contentRoot);
+        services.AddSingleton<GeographicNetworkCache>();
+        services.AddHttpClient<IGeographicNetworkProvider, OverpassNetworkProvider>(http =>
+        {
+            http.BaseAddress = new Uri("https://overpass-api.de/");
+            http.Timeout = TimeSpan.FromSeconds(30);
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("PaveLens/1.0");
+        });
         return services;
     }
 
@@ -76,7 +86,7 @@ public static class DependencyInjection
         return builder.ToString();
     }
 
-    private static void AddAi(IServiceCollection services, IConfiguration configuration)
+    private static void AddAi(IServiceCollection services, IConfiguration configuration, string contentRoot)
     {
         services.AddOptions<AiOptions>().Bind(configuration.GetSection(AiOptions.SectionName)).ValidateOnStart();
         services.AddSingleton<IValidateOptions<AiOptions>, AiOptionsValidator>();
@@ -89,15 +99,20 @@ public static class DependencyInjection
             services.AddSingleton<IDiagnosticReasoner, SimulatedReasoner>();
             services.AddSingleton<IMaintenanceAssistant, SimulatedMaintenanceAssistant>();
             services.AddSingleton<ITrafficPlanner, SimulatedTrafficPlanner>();
+            services.AddSingleton<IInspectionCoordinator, SimulatedInspectionCoordinator>();
+            services.AddSingleton<IInspectionAuditor, SimulatedInspectionAuditor>();
             return;
         }
 
-        var segmentation = options.Meta.SegmentationService == SegmentationService.Roboflow
+        services.AddSingleton<ISam31Decoder>(_ => new NodeSam31Decoder(Path.GetFullPath(options.Meta.Sam31ParserScript, contentRoot), options.Meta.NodeExecutable));
+        var segmentation = options.Meta.SegmentationService == SegmentationService.Meta
+            ? services.AddHttpClient<IDistressSegmenter, MetaSam31Segmenter>((sp, http) => Configure(http, sp.GetRequiredService<IOptions<AiOptions>>().Value.Meta.Sam31))
+            : options.Meta.SegmentationService == SegmentationService.Roboflow
             ? services.AddHttpClient<IDistressSegmenter, RoboflowSam3Segmenter>((sp, http) =>
                 Configure(http, sp.GetRequiredService<IOptions<AiOptions>>().Value.Meta.Segmentation))
             : services.AddHttpClient<IDistressSegmenter, MetaSegmentationClient>((sp, http) =>
                 Configure(http, sp.GetRequiredService<IOptions<AiOptions>>().Value.Meta.Segmentation));
-        segmentation.AddStandardResilienceHandler(o => ConfigureResilience(o, options.Meta.Segmentation));
+        segmentation.AddStandardResilienceHandler(o => ConfigureResilience(o, options.Meta.SegmentationService == SegmentationService.Meta ? options.Meta.Sam31 : options.Meta.Segmentation));
 
         services.AddHttpClient<MetaChatClient>((sp, http) =>
                 Configure(http, sp.GetRequiredService<IOptions<AiOptions>>().Value.Meta.Reasoning))
@@ -106,6 +121,8 @@ public static class DependencyInjection
         services.AddTransient<IDiagnosticReasoner, MetaReasoner>();
         services.AddTransient<IMaintenanceAssistant, MetaMaintenanceAssistant>();
         services.AddTransient<ITrafficPlanner, MetaTrafficPlanner>();
+        services.AddTransient<IInspectionCoordinator, MetaInspectionCoordinator>();
+        services.AddTransient<IInspectionAuditor, MetaInspectionAuditor>();
     }
 
     private static void Configure(HttpClient http, EndpointOptions endpoint)

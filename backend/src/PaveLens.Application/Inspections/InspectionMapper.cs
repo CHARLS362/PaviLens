@@ -18,7 +18,7 @@ public static class InspectionMapper
             inspection.Trace is { } t
                 ? new AnalysisTraceDto(
                     t.Concepts.Select(c => new ConceptTraceDto(c.Concept, c.Masks)).ToList(),
-                    t.SegmentationMs, t.ReasoningMs, t.ReasoningAttempts, t.SkippedBeyondHorizon)
+                    t.SegmentationMs, t.ReasoningMs, t.ReasoningAttempts, t.SkippedBeyondHorizon, t.Orchestration)
                 : null,
             inspection.Language,
             inspection.Engine,

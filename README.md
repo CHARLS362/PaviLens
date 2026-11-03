@@ -5,6 +5,8 @@
 
 *Leer en español: [README.es.md](README.es.md)*
 
+New: [agent orchestration, native Meta SAM 3.1, regional profiles and geographic maps](backend/docs/ORCHESTRATION.md). See the [implementation and frontend review report (Spanish)](docs/REPORTE_IMPLEMENTACION.es.md) for verified scope and remaining work.
+
 ![An angled photo of a street: every distress outlined and measured in metres, with the PCI, the Meta AI pipeline trace and the quantities](docs/screenshots/inspection.png)
 
 ## The problem
@@ -26,9 +28,9 @@ Pavement surveys are still done on foot, with a tape measure and a notebook. Sev
    - Traffic is assigned with a Wardrop user equilibrium (Frank-Wolfe + BPR), by time window (peak, off-peak, night) and works duration.
    - The result gives the vehicle-hours lost, the streets that absorb the detour and the social cost in soles, and recommends the cheapest window.
    - Muse Wonder turns the result into a traffic management plan: routes by vehicle type, signage, work phases, public notices and risks.
-7. **Inspection file (PDF).** One click prints an A4 file that a municipality can archive or attach to a work order. It contains the photo with the outlined distresses, the PCI, the distress log with quantities, the unit-price budget, the repair protocol with checkboxes, and signature lines. Demo results are clearly flagged on the page.
-8. **Try it without a photo.** The new-inspection dialog offers the three demo scenes with their scale already set, so anyone can run the whole flow in a few clicks. On a phone, the viewer supports pinch to zoom and one-finger pan.
-9. **Spanish and English.** The interface switches between ES and EN at any time. Every inspection and traffic plan records the language its report is written in: Muse Wonder receives it in the prompt, and the demo scenarios ship in both languages.
+7. **Try it without a photo.** The new-inspection dialog offers the three demo scenes with their scale already set, so anyone can run the whole flow in a few clicks. On a phone, the viewer supports pinch to zoom and one-finger pan.
+8. **Spanish and English.** The interface switches between ES and EN at any time. Every inspection and traffic plan records the language its report is written in: Muse Wonder receives it in the prompt, and the demo scenarios ship in both languages.
+9. **Accessibility.** An *Accessibility* panel in the top bar sets the text size (100, 115 or 130 %), high contrast, reduced motion and a color-blind-safe palette that also marks severity with dash patterns. Preferences persist in the browser, and the system settings (`prefers-contrast`, `prefers-reduced-motion`, forced colors) apply on their own. The photo viewer works from the keyboard (+, −, arrows, 0) and announces the selected distress and zoom to screen readers. Tabs, dialogs, live regions and every icon button have proper ARIA, and all font sizes are in rem so browser zoom and text settings are respected.
 
 ## Screenshots
 
@@ -36,10 +38,6 @@ Pavement surveys are still done on foot, with a tape measure and a notebook. Sev
 |---|---|
 | ![Zoomed onto the alligator-cracking outline next to the unit-price budget](docs/screenshots/budget.png) | ![Lane closure on Jr. Lima: detour routes, streets that absorb the traffic, signs and the time-window costs](docs/screenshots/detour-planner.png) |
 | **Show on photo** zooms onto a distress; the budget is computed by code from the measured areas. | **Detour planning**: Wardrop equilibrium on the demo network of central Puno, with the plan written by Muse Wonder. |
-
-<img src="docs/screenshots/pdf-report.png" width="560" alt="First page of the printable A4 inspection file">
-
-The **printable inspection file**, saved as PDF from the browser.
 
 *The screenshots run in demo mode (`Ai:Provider = Simulation`), which the app labels on every screen.*
 
@@ -114,7 +112,7 @@ meta/
 
 ## Tests
 
-120 backend tests (unit and integration) and the frontend tests:
+133 backend tests (unit and integration) and 10 frontend tests:
 
 ```bash
 dotnet test --solution backend/PaveLens.slnx

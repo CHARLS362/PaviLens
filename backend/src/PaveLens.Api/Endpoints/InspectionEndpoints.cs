@@ -48,6 +48,9 @@ internal static class InspectionEndpoints
         [FromForm] double? referenceWidthM,
         [FromForm] string? calibration,
         [FromForm] string? language,
+        [FromForm] string? regionId,
+        [FromForm] double? latitude,
+        [FromForm] double? longitude,
         InspectionService service,
         CancellationToken cancellationToken)
     {
@@ -55,7 +58,7 @@ internal static class InspectionEndpoints
         var created = await service.CreateAsync(
             new CreateInspectionCommand(
                 title, notes, location, roadSegmentId, referenceWidthM, ParseCalibration(calibration), stream, image.FileName,
-                ParseLanguage(language)),
+                ParseLanguage(language), regionId, latitude, longitude),
             cancellationToken);
         return TypedResults.CreatedAtRoute(created, "GetInspection", new { id = created.Id });
     }

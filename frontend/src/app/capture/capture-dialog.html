@@ -59,7 +59,7 @@
               <span class="dz-hint">{{ 'JPEG, PNG o WebP hasta 10 MB' | t }}</span>
             </label>
             <label class="btn btn-secondary mobile-capture">
-              <input type="file" accept="image/*" capture="environment" (change)="onFileSelected($event)" />
+              <input type="file" accept="image/*" capture="environment" [attr.aria-label]="'Tomar foto con el celular' | t" (change)="onFileSelected($event)" />
               {{ 'Tomar foto con el celular' | t }}
             </label>
             @if (fileError(); as e) {
@@ -70,7 +70,7 @@
               <div class="samples-list">
                 @for (s of samples; track s.file) {
                   <button class="sample" type="button" [disabled]="loadingSample()" (click)="useSample(s)">
-                    <img [src]="'samples/' + s.file" alt="" loading="lazy" />
+                    <img [src]="'samples/' + s.file" alt="" />
                     <span class="sample-name">{{ s.label | t }}</span>
                     <span class="sample-hint">{{ s.hint | t }}</span>
                   </button>
@@ -200,6 +200,18 @@
       @if (step() === 'details') {
         <div class="details">
           <div class="details-form">
+            <div class="field">
+              <label for="cap-region">{{ 'Perfil regional' | t }}</label>
+              <select id="cap-region" [ngModel]="regionId()" (ngModelChange)="regionId.set($event); segmentId.set('')">
+                @for (region of regions(); track region.id) { <option [value]="region.id">{{ region.name }} · {{ region.version }}</option> }
+                @empty { <option value="pe-puno">Puno · Perú</option> }
+              </select>
+              <span class="help">{{ 'Cada inspección conserva el perfil y los precios usados. La referencia internacional requiere precios locales para presupuestar.' | t }}</span>
+            </div>
+            <div class="calib-form">
+              <div class="field"><label for="cap-lat">{{ 'Latitud (opcional)' | t }}</label><input id="cap-lat" type="number" min="-85" max="85" step="0.0001" [ngModel]="latitude()" (ngModelChange)="latitude.set($event)" /></div>
+              <div class="field"><label for="cap-lon">{{ 'Longitud (opcional)' | t }}</label><input id="cap-lon" type="number" min="-180" max="180" step="0.0001" [ngModel]="longitude()" (ngModelChange)="longitude.set($event)" /></div>
+            </div>
             <div class="field">
               <label for="cap-title">{{ 'Título' | t }} <span class="req">{{ '(obligatorio)' | t }}</span></label>
               <input id="cap-title" type="text" required [placeholder]="'Jr. Lima, cuadra 3 · bache' | t" [ngModel]="title()" (ngModelChange)="title.set($event)" />

@@ -24,14 +24,15 @@ internal static class AiStatusEndpoints
         }
 
         var meta = o.Meta;
+        var segmentation = meta.SegmentationService == SegmentationService.Meta ? meta.Sam31 : meta.Segmentation;
         return TypedResults.Ok(new AiStatus(
             "Meta",
             new ModelStatus(
-                "SAM 3",
-                meta.Segmentation.Model,
+                meta.SegmentationService == SegmentationService.Meta ? "SAM 3.1" : "SAM 3",
+                segmentation.Model,
                 meta.SegmentationService.ToString(),
-                meta.Segmentation.BaseUrl?.Host,
-                !string.IsNullOrWhiteSpace(meta.Segmentation.ApiKey)),
+                segmentation.BaseUrl?.Host,
+                !string.IsNullOrWhiteSpace(segmentation.ApiKey) || meta.SegmentationService == SegmentationService.Meta && !string.IsNullOrWhiteSpace(meta.Reasoning.ApiKey)),
             new ModelStatus(
                 "Muse Wonder",
                 meta.Reasoning.Model,

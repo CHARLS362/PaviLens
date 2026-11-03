@@ -1,0 +1,16 @@
+:host { display:block; }
+.agent-panel { padding:16px; border-bottom:1px solid var(--border); background:var(--surface); font-size:.8125rem; }
+header { display:flex; flex-wrap:wrap; align-items:center; gap:8px; justify-content:space-between; }
+h3 { font-size:.875rem; }
+.agent-status { color:var(--accent); font-weight:600; }
+.agent-intro { margin:8px 0; }
+.agent-facts { margin:10px 0; display:grid; gap:8px; }
+.agent-facts dt,.agent-note { color:var(--muted); font-size:.75rem; }
+.agent-facts dd { margin:0; overflow-wrap:anywhere; }
+.agent-actions { margin:12px 0; padding-left:22px; }
+.agent-actions li { padding:4px 0; }
+summary { cursor:pointer; padding:8px 0; min-height:44px; }
+.action-status { display:block; color:var(--muted); font-size:.75rem; }
+pre { max-height:260px; overflow:auto; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; font-size:.75rem; white-space:pre-wrap; overflow-wrap:anywhere; }
+.rejected,.agent-warnings { color:var(--danger); }
+.agent-warnings ul { padding-left:20px; }

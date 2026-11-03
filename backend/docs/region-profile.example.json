@@ -1,0 +1,44 @@
+{
+  "Regions": {
+    "Profiles": [
+      {
+        "Id": "project-region",
+        "Name": "Replace with the project and region name",
+        "CountryCode": "ZZ",
+        "Version": "project-reference-v1",
+        "ConditionMethod": "ASTM D6433 reference model",
+        "JurisdictionValidated": false,
+        "PricesAvailable": false,
+        "Latitude": 0,
+        "Longitude": 0,
+        "Pavement": {
+          "PatchMarginM": 0.15,
+          "HmaDensityTPerM3": 2.35,
+          "WasteFactor": 0.05,
+          "AssumedDepthLowM": 0.03,
+          "AssumedDepthMediumM": 0.05,
+          "AssumedDepthHighM": 0.075,
+          "Prices": {
+            "Currency": "XXX",
+            "SawCutPerM": 0,
+            "RemovalPerM3": 0,
+            "TackCoatPerM2": 0,
+            "HotMixPerT": 0,
+            "CompactionPerM2": 0,
+            "CrackSealPerM": 0,
+            "OverheadPct": 0,
+            "ProfitPct": 0,
+            "IgvPct": 0
+          },
+          "Region": {
+            "Name": "Project reference; requires local validation",
+            "AltitudeM": 0,
+            "RecommendedBinder": "Requires a locally validated material design",
+            "Notes": ["Replace reference assumptions with verified project data."]
+          }
+        },
+        "Sources": []
+      }
+    ]
+  }
+}

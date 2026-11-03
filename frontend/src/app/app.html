@@ -16,6 +16,7 @@
     <nav class="topnav" [attr.aria-label]="'Módulos' | t">
       <button [class.active]="module() === 'inspections'" [attr.aria-current]="module() === 'inspections' ? 'page' : null" (click)="module.set('inspections')">{{ 'Inspecciones' | t }}</button>
       <button [class.active]="module() === 'planner'" [attr.aria-current]="module() === 'planner' ? 'page' : null" [disabled]="!network()" (click)="openPlanner()">{{ 'Planificación de desvíos' | t }}</button>
+      <button [class.active]="module() === 'geography'" [attr.aria-current]="module() === 'geography' ? 'page' : null" (click)="module.set('geography')">{{ 'Mapa de ciudades' | t }}</button>
     </nav>
 
     <div class="topbar-actions">
@@ -35,6 +36,7 @@
           </span>
         }
       }
+      <app-a11y-panel />
       <div class="lang-toggle" role="group" [attr.aria-label]="'Idioma de la interfaz y de los informes' | t">
         <button [class.active]="i18n.lang() === 'es'" [attr.aria-pressed]="i18n.lang() === 'es'" lang="es" (click)="i18n.set('es')">ES</button>
         <button [class.active]="i18n.lang() === 'en'" [attr.aria-pressed]="i18n.lang() === 'en'" lang="en" (click)="i18n.set('en')">EN</button>
@@ -49,7 +51,9 @@
     </div>
   </header>
 
-  @if (module() === 'planner' && network(); as net) {
+  @if (module() === 'geography') {
+    <main id="main" tabindex="-1" class="workspace planner-view"><app-city-map /></main>
+  } @else if (module() === 'planner' && network(); as net) {
     <main id="main" tabindex="-1" class="workspace planner-view">
       <app-traffic-planner [network]="net" [initialSegment]="plannerSegment()" [inspectedSegment]="selectedAnalysis()?.roadSegmentId ?? null" />
     </main>
@@ -59,12 +63,13 @@
     <aside class="sidebar">
       <div class="sidebar-head">
         <h2>{{ 'Inspecciones' | t }}</h2>
-        <span class="count-badge">{{ analyses().length }}</span>
+        <span class="count-badge" aria-hidden="true">{{ analyses().length }}</span>
       </div>
 
-      <div class="inspection-list">
+      <div class="inspection-list" role="list" [attr.aria-label]="'Inspecciones registradas' | t">
         @for (item of analyses(); track item.id) {
-          <button class="inspection-row" [class.active]="selectedAnalysis()?.id === item.id" (click)="selectAnalysis(item)">
+          <div role="listitem" class="inspection-item">
+          <button class="inspection-row" [class.active]="selectedAnalysis()?.id === item.id" [attr.aria-current]="selectedAnalysis()?.id === item.id ? 'true' : null" (click)="selectAnalysis(item)">
             <img class="inspection-thumb" [src]="item.imageUrl" alt="" />
             <span class="inspection-info">
               <span class="inspection-title">{{ item.title }}</span>
@@ -86,9 +91,11 @@
               </span>
             </span>
             <span class="pci-chip" [ngClass]="pciClass(item.pci)" [title]="item.pci != null ? 'PCI ' + (item.pci | number:'1.0-0') : ('Sin PCI' | t)">
-              {{ item.pci != null ? (item.pci | number:'1.0-0') : '—' }}
+              <span class="sr-only">{{ item.pci != null ? 'PCI' : ('Sin PCI' | t) }}</span>
+              <span [attr.aria-hidden]="item.pci == null">{{ item.pci != null ? (item.pci | number:'1.0-0') : '—' }}</span>
             </span>
           </button>
+          </div>
         } @empty {
           <div class="empty-list">
             @if (isLoading()) {
@@ -131,13 +138,7 @@
             @if (current.engine === 'Simulation') {
               <span class="sim-banner" [title]="'Ai:Provider = Simulation. Configura Meta para usar SAM 3 y Muse Wonder reales.' | t">{{ 'Datos de simulación' | t }}</span>
             }
-            @if (current.status === 'Completed') {
-              <button class="btn btn-secondary btn-sm" (click)="printReport()" [disabled]="isPreparingPrint()" [title]="'Abre el diálogo de impresión; elige «Guardar como PDF».' | t">
-                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6V2h8v4M4 12H2.5V6.5h11V12H12M4 9.5h8V14H4z" /></svg>
-                {{ (isPreparingPrint() ? 'Preparando…' : 'Expediente PDF') | t }}
-              </button>
-            }
-            <button class="btn btn-text danger" (click)="askDelete()" [disabled]="isRunning(current.status)">{{ 'Eliminar' | t }}</button>
+            <button class="btn btn-text danger" (click)="askDelete()" [disabled]="isRunning(current.status)" [attr.aria-label]="'Eliminar inspección' | t">{{ 'Eliminar' | t }}</button>
           </div>
         </div>
 
@@ -171,8 +172,14 @@
           <div
             #canvas
             class="viewer-canvas"
+            tabindex="0"
+            role="group"
+            [attr.aria-roledescription]="'visor de foto' | t"
+            [attr.aria-label]="'Fotografía con {n} deterioros delineados' | t: { n: visibleDistresses().length }"
+            aria-describedby="viewer-help"
             [class.zoomed]="view().s > 1"
             [class.panning]="isPanning()"
+            (keydown)="onViewerKey($event, canvas)"
             (wheel)="onViewerWheel($event)"
             (mousedown)="onViewerDown($event)"
             (mousemove)="onViewerMove($event)"
@@ -192,7 +199,7 @@
               (mouseleave)="cursor.set(null)">
               <img [src]="current.image.url" [alt]="'Fotografía del pavimento inspeccionado' | t" class="stage-image" />
 
-              <svg class="overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <svg class="overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                 @if (current.calibration && showCalibration()) {
                   <polygon class="calib" [attr.points]="calibrationPoints(current)" />
                 }
@@ -221,6 +228,8 @@
                     [class.hovered]="hoveredDistressId() === d.id"
                     [style.left.%]="d.box.x * 100"
                     [style.top.%]="d.box.y * 100"
+                    [attr.aria-label]="distressLabel(d)"
+                    [attr.aria-pressed]="selectedDistress()?.id === d.id"
                     (click)="pickOnPhoto(d)"
                     (mouseenter)="hoveredDistressId.set(d.id)"
                     (mouseleave)="hoveredDistressId.set(null)">
@@ -236,11 +245,11 @@
               }
 
               @if (isLoadingDetail()) {
-                <div class="stage-status">{{ 'Cargando segmentación…' | t }}</div>
+                <div class="stage-status" role="status">{{ 'Cargando segmentación…' | t }}</div>
               }
 
               @if (current.status === 'Failed') {
-                <div class="stage-failure">
+                <div class="stage-failure" role="alert">
                   <strong>{{ 'El análisis falló (intento {n})' | t: { n: current.attempts } }}</strong>
                   <p>{{ current.failureReason | t }}</p>
                   <button class="btn btn-primary btn-sm" (click)="retryAnalysis()">{{ 'Reintentar análisis' | t }}</button>
@@ -262,6 +271,8 @@
               </span>
             }
           </div>
+          <p id="viewer-help" class="sr-only">{{ 'Con el visor enfocado: + y − para el zoom, flechas para mover la foto ampliada, 0 para restablecer. Los deterioros también se listan en el registro del panel derecho.' | t }}</p>
+          <p class="sr-only" aria-live="polite">{{ viewerAnnouncement() }}</p>
 
           <div class="viewer-bar">
             <div class="legend">
@@ -279,10 +290,10 @@
             </div>
             <div class="zoom-controls">
               <button class="icon-btn" [attr.aria-label]="'Alejar' | t" (click)="zoomBy(1 / 1.5, canvas)" [disabled]="view().s === 1">−</button>
-              <button class="zoom-level" [title]="'Restablecer (doble clic en la foto)' | t" (click)="resetView()">{{ view().s * 100 | number:'1.0-0' }} %</button>
+              <button class="zoom-level" [title]="'Restablecer (doble clic en la foto)' | t" [attr.aria-label]="'Zoom {z} %. Restablecer la vista' | t: { z: (view().s * 100 | number:'1.0-0') }" (click)="resetView()">{{ view().s * 100 | number:'1.0-0' }} %</button>
               <button class="icon-btn" [attr.aria-label]="'Acercar' | t" (click)="zoomBy(1.5, canvas)">+</button>
             </div>
-            <span class="cursor-readout" [title]="'Posición del cursor sobre la calzada' | t">
+            <span class="cursor-readout" aria-hidden="true" [title]="'Posición del cursor sobre la calzada' | t">
               @if (cursorGround(); as p) {
                 x {{ p[0] | number:'1.2-2' }} m · y {{ p[1] | number:'1.2-2' }} m
               } @else {
@@ -300,7 +311,7 @@
       }
 
       @if (isAnalyzing()) {
-        <div class="processing">
+        <div class="processing" role="status" aria-live="polite">
           <div class="processing-card">
             @if (selectedAnalysis()?.image?.url; as src) {
               <img [src]="src" alt="" />
@@ -309,7 +320,10 @@
               <h3>{{ 'Analizando la fotografía' | t }}</h3>
               <ol class="stages">
                 @for (stage of pipelineStages; track stage; let i = $index) {
-                  <li [class.done]="i < pipelineStage()" [class.current]="i === pipelineStage()">{{ stage | t }}</li>
+                  <li [class.done]="i < pipelineStage()" [class.current]="i === pipelineStage()" [attr.aria-current]="i === pipelineStage() ? 'step' : null">
+                    {{ stage | t }}
+                    @if (i < pipelineStage()) { <span class="sr-only">{{ ': listo' | t }}</span> }
+                  </li>
                 }
               </ol>
             </div>
@@ -322,17 +336,18 @@
     <aside class="inspector">
       @if (selectedAnalysis(); as current) {
         <nav class="tabs" role="tablist" [attr.aria-label]="'Secciones de la inspección' | t" (keydown)="onTabKey($event)">
-          <button role="tab" id="tab-distress" [class.active]="activeTab() === 'distress'" [attr.aria-selected]="activeTab() === 'distress'" [attr.tabindex]="activeTab() === 'distress' ? 0 : -1" (click)="setTab('distress')">{{ 'Evaluación' | t }}</button>
-          <button role="tab" id="tab-budget" [class.active]="activeTab() === 'budget'" [attr.aria-selected]="activeTab() === 'budget'" [attr.tabindex]="activeTab() === 'budget' ? 0 : -1" (click)="setTab('budget')">{{ 'Presupuesto' | t }}</button>
-          <button role="tab" id="tab-traffic" [class.active]="activeTab() === 'traffic'" [attr.aria-selected]="activeTab() === 'traffic'" [attr.tabindex]="activeTab() === 'traffic' ? 0 : -1" (click)="setTab('traffic')">{{ 'Tránsito' | t }}</button>
-          <button role="tab" id="tab-steps" [class.active]="activeTab() === 'steps'" [attr.aria-selected]="activeTab() === 'steps'" [attr.tabindex]="activeTab() === 'steps' ? 0 : -1" (click)="setTab('steps')">
+          <button role="tab" id="tab-distress" aria-controls="inspector-panel" [class.active]="activeTab() === 'distress'" [attr.aria-selected]="activeTab() === 'distress'" [attr.tabindex]="activeTab() === 'distress' ? 0 : -1" (click)="setTab('distress')">{{ 'Evaluación' | t }}</button>
+          <button role="tab" id="tab-budget" aria-controls="inspector-panel" [class.active]="activeTab() === 'budget'" [attr.aria-selected]="activeTab() === 'budget'" [attr.tabindex]="activeTab() === 'budget' ? 0 : -1" (click)="setTab('budget')">{{ 'Presupuesto' | t }}</button>
+          <button role="tab" id="tab-traffic" aria-controls="inspector-panel" [class.active]="activeTab() === 'traffic'" [attr.aria-selected]="activeTab() === 'traffic'" [attr.tabindex]="activeTab() === 'traffic' ? 0 : -1" (click)="setTab('traffic')">{{ 'Tránsito' | t }}</button>
+          <button role="tab" id="tab-steps" aria-controls="inspector-panel" [class.active]="activeTab() === 'steps'" [attr.aria-selected]="activeTab() === 'steps'" [attr.tabindex]="activeTab() === 'steps' ? 0 : -1" (click)="setTab('steps')">
             {{ 'Protocolo' | t }} <span class="tab-count">{{ completedSteps() }}/{{ sortedSteps().length }}</span>
           </button>
         </nav>
 
         <!-- ===== EVALUATION ===== -->
         @if (activeTab() === 'distress') {
-          <div class="inspector-body">
+          <div class="inspector-body" role="tabpanel" id="inspector-panel" aria-labelledby="tab-distress" tabindex="0">
+            @if (current.trace?.orchestration; as run) { <app-agent-run-panel [run]="run" /> }
             <section class="section">
               <h3 class="section-title">{{ 'Diagnóstico del tramo' | t }} <span class="source">{{ source('reasoning') }}</span></h3>
               <p class="prose">{{ current.summary ?? ((isRunning(current.status) ? 'Analizando…' : 'Sin diagnóstico.') | t) }}</p>
@@ -503,7 +518,7 @@
               <section class="section">
                 <h3 class="section-title">{{ 'Consulta técnica sobre' | t }} {{ d.code }} <span class="source">{{ source('reasoning') }}</span></h3>
                 @if (messages().length || pendingQuestion()) {
-                  <div class="thread">
+                  <div class="thread" aria-live="polite">
                     @for (m of messages(); track m.id) {
                       <div class="msg" [class.user]="m.role === 'User'">{{ m.role === 'User' ? m.content : plain(m.content) }}</div>
                     }
@@ -554,36 +569,42 @@
 
         <!-- ===== BUDGET ===== -->
         @if (activeTab() === 'budget') {
-          <div class="inspector-body">
+          <div class="inspector-body" role="tabpanel" id="inspector-panel" aria-labelledby="tab-budget" tabindex="0">
             @if (current.status !== 'Completed') {
               <p class="muted">{{ 'El presupuesto se calcula cuando termina el análisis.' | t }}</p>
             } @else if (budget(); as b) {
               <section class="section">
                 <h3 class="section-title">{{ 'Análisis de precios unitarios' | t }} <span class="source">{{ b.currency }} <span class="calc-badge" [title]="'Metrados y precios calculados por código; Muse Wonder no fija estos montos.' | t">{{ 'código' | t }}</span></span></h3>
-                <table class="table">
+                <div class="budget-hero">
+                  <span class="budget-hero-label">{{ 'Presupuesto total' | t }}</span>
+                  <span class="budget-hero-value"><small>{{ b.currency }}</small> {{ b.total | number:'1.2-2' }}</span>
+                  <span class="budget-hero-sub">{{ (b.lines.length === 1 ? '1 partida' : '{n} partidas') | t: { n: b.lines.length } }} · {{ 'IGV incluido' | t }}</span>
+                </div>
+                <table class="table apu">
                   <thead>
-                    <tr><th>{{ 'Ítem' | t }}</th><th>{{ 'Partida' | t }}</th><th class="num">{{ 'Metrado' | t }}</th><th class="num">P. U.</th><th class="num">{{ 'Parcial' | t }}</th></tr>
+                    <tr><th>{{ 'Ítem' | t }}</th><th>{{ 'Partida · metrado × P. U.' | t }}</th><th class="num">{{ 'Parcial' | t }}</th></tr>
                   </thead>
                   <tbody>
                     @for (line of b.lines; track line.item) {
                       <tr>
                         <td class="code">{{ line.item }}</td>
-                        <td class="wrap">{{ line.description | t }}</td>
-                        <td class="num">{{ line.quantity | number:'1.2-3' }} {{ line.unit }}</td>
-                        <td class="num">{{ line.unitPrice | number:'1.2-2' }}</td>
+                        <td class="wrap">
+                          <span class="apu-desc">{{ line.description | t }}</span>
+                          <span class="apu-calc">{{ line.quantity | number:'1.2-3' }} {{ line.unit }} × {{ line.unitPrice | number:'1.2-2' }}</span>
+                        </td>
                         <td class="num">{{ line.amount | number:'1.2-2' }}</td>
                       </tr>
                     } @empty {
-                      <tr><td colspan="5" class="muted">{{ 'Sin partidas: no hay deterioros que intervenir.' | t }}</td></tr>
+                      <tr><td colspan="3" class="muted">{{ 'Sin partidas: no hay deterioros que intervenir.' | t }}</td></tr>
                     }
                   </tbody>
                   <tfoot>
-                    <tr><td colspan="4">{{ 'Costo directo' | t }}</td><td class="num">{{ b.directCost | number:'1.2-2' }}</td></tr>
-                    <tr><td colspan="4">{{ 'Gastos generales (' | t }}{{ b.overheadPct }} %)</td><td class="num">{{ b.overhead | number:'1.2-2' }}</td></tr>
-                    <tr><td colspan="4">{{ 'Utilidad (' | t }}{{ b.profitPct }} %)</td><td class="num">{{ b.profit | number:'1.2-2' }}</td></tr>
-                    <tr><td colspan="4">{{ 'Subtotal' | t }}</td><td class="num">{{ b.subtotal | number:'1.2-2' }}</td></tr>
-                    <tr><td colspan="4">{{ 'IGV (' | t }}{{ b.igvPct }} %)</td><td class="num">{{ b.igv | number:'1.2-2' }}</td></tr>
-                    <tr class="total"><td colspan="4">{{ 'Presupuesto total' | t }}</td><td class="num">{{ b.currency }} {{ b.total | number:'1.2-2' }}</td></tr>
+                    <tr><td colspan="2">{{ 'Costo directo' | t }}</td><td class="num">{{ b.directCost | number:'1.2-2' }}</td></tr>
+                    <tr><td colspan="2">{{ 'Gastos generales (' | t }}{{ b.overheadPct }} %)</td><td class="num">{{ b.overhead | number:'1.2-2' }}</td></tr>
+                    <tr><td colspan="2">{{ 'Utilidad (' | t }}{{ b.profitPct }} %)</td><td class="num">{{ b.profit | number:'1.2-2' }}</td></tr>
+                    <tr><td colspan="2">{{ 'Subtotal' | t }}</td><td class="num">{{ b.subtotal | number:'1.2-2' }}</td></tr>
+                    <tr><td colspan="2">{{ 'IGV (' | t }}{{ b.igvPct }} %)</td><td class="num">{{ b.igv | number:'1.2-2' }}</td></tr>
+                    <tr class="total"><td colspan="2">{{ 'Presupuesto total' | t }}</td><td class="num">{{ b.currency }} {{ b.total | number:'1.2-2' }}</td></tr>
                   </tfoot>
                 </table>
                 @if (b.assumedDepthCount) {
@@ -614,7 +635,7 @@
 
         <!-- ===== TRAFFIC ===== -->
         @if (activeTab() === 'traffic') {
-          <div class="inspector-body">
+          <div class="inspector-body" role="tabpanel" id="inspector-panel" aria-labelledby="tab-traffic" tabindex="0">
             <section class="section">
               <h3 class="section-title">{{ 'Cierre para la reparación' | t }} <span class="source">{{ 'BPR · equilibrio de Wardrop' | t }}</span></h3>
               @if (inspectionSegment(); as seg) {
@@ -634,10 +655,10 @@
 
         <!-- ===== PROTOCOL ===== -->
         @if (activeTab() === 'steps') {
-          <div class="inspector-body">
+          <div class="inspector-body" role="tabpanel" id="inspector-panel" aria-labelledby="tab-steps" tabindex="0">
             <section class="section">
               <h3 class="section-title">{{ 'Protocolo de mantenimiento' | t }} <span class="source">{{ '{done} de {total}' | t: { done: completedSteps(), total: sortedSteps().length } }}</span></h3>
-              <div class="progress"><span class="progress-fill" [style.width.%]="sortedSteps().length ? completedSteps() / sortedSteps().length * 100 : 0"></span></div>
+              <div class="progress" role="progressbar" aria-valuemin="0" [attr.aria-valuemax]="sortedSteps().length" [attr.aria-valuenow]="completedSteps()" [attr.aria-label]="'Avance del protocolo' | t"><span class="progress-fill" [style.width.%]="sortedSteps().length ? completedSteps() / sortedSteps().length * 100 : 0"></span></div>
             </section>
 
             <ol class="steps">
@@ -685,16 +706,10 @@
   @if (showUploadModal()) {
     <app-capture-dialog
       [segments]="network()?.segments ?? []"
+      [regions]="regions()"
       [busy]="isUploading()"
       (submitted)="startNewAnalysis($event)"
       (closed)="showUploadModal.set(false)" />
-  }
-
-  <!-- PRINTABLE FILE: hidden on screen, the only thing on paper -->
-  @if (selectedAnalysis(); as current) {
-    @if (current.status === 'Completed') {
-      <app-print-report [inspection]="current" [budget]="budget()?.inspectionId === current.id ? budget() : null" [segmentName]="inspectionSegment()?.name ?? null" />
-    }
   }
 
   <!-- DELETE CONFIRMATION: native modal dialog, so focus, Esc and the backdrop come from the browser -->
@@ -712,7 +727,7 @@
   </dialog>
 
   @if (toast(); as t) {
-    <div class="toast" [class.error]="t.kind === 'error'" role="status">
+    <div class="toast" [class.error]="t.kind === 'error'" [attr.role]="t.kind === 'error' ? 'alert' : 'status'">
       <span>{{ t.text | t }}</span>
       <button class="icon-btn" [attr.aria-label]="'Cerrar aviso' | t" (click)="toast.set(null)">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>

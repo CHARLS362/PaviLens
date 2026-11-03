@@ -7,10 +7,13 @@
 
 ![Foto oblicua de una calle: cada deterioro delineado y medido en metros, con el PCI, la traza del pipeline Meta AI y los metrados](docs/screenshots/inspection.png)
 
-Más capturas (presupuesto, planificador de desvíos y expediente PDF) en el [README en inglés](README.md#screenshots). Están en modo demostración, que la app indica en cada pantalla.
+Más capturas (presupuesto y planificador de desvíos) en el [README en inglés](README.md#screenshots). Están en modo demostración, que la app indica en cada pantalla.
 
 ## Documentación
 
+- [Reporte técnico de orquestación con una clave de Meta](docs/ORQUESTACION_AGENTICA_META.es.md): arquitectura, activación directa, contratos, límites y validación pendiente.
+- [Reporte de implementación, revisión del frontend y pendientes para el hackathon](docs/REPORTE_IMPLEMENTACION.es.md).
+- [Orquestación de agentes, SAM 3.1 directo, perfiles regionales y mapas](backend/docs/ORCHESTRATION.md): configuración, evidencia y límites actuales.
 - [tematica.md](tematica.md): el producto, el problema que resuelve y el flujo de usuario.
 - [DESAFIO.md](DESAFIO.md): bases del hackathon, rúbrica, textos de postulación y guion del video.
 - [PLANIFICACION.md](PLANIFICACION.md): plan y fundamentos (proyección al plano, PCI, cubicaje, APU MTC, BPR + Wardrop).
@@ -26,9 +29,9 @@ Más capturas (presupuesto, planificador de desvíos y expediente PDF) en el [RE
 4. **PCI (ASTM D6433).** Valores deducidos por densidad, número máximo de deducidos *m* y CDV iterativo. Si la foto cubre menos de 135 m², el PCI se marca como parcial (cota superior).
 5. **Cubicaje y APU.** Corte rectangular con margen, volumen y toneladas de mezcla. Partidas MTC con precios en soles (PEN), gastos generales, utilidad e IGV, y condiciones de obra para Puno (3 827 m s. n. m.). La profundidad medida en campo reemplaza a la supuesta y recalcula todo.
 6. **Planificación de desvíos.** Cierre de carriles en una red de demostración del centro de Puno, sobre un mapa con flujo por sentido. Asignación de equilibrio de Wardrop (Frank-Wolfe + BPR) por franja (hora punta, valle, noche) y duración de la obra. Devuelve las veh·h perdidas, los tramos que absorben el desvío y el costo social en soles (Δveh·h × horas × valor del tiempo, configurable en `Traffic:*`), y recomienda la franja más barata. Muse Wonder convierte el resultado en un plan de manejo de tránsito: rutas por tipo de vehículo, señalización, fases, avisos y riesgos.
-7. **Expediente (PDF).** Con un clic se imprime un expediente A4 que una municipalidad puede archivar o adjuntar a una orden de trabajo. Incluye la foto con los deterioros delineados, el PCI, el registro de deterioros con metrados, el presupuesto (APU), el protocolo con casillas y líneas de firma. Los resultados de demostración quedan marcados en la hoja.
-8. **Probar sin foto.** El diálogo de nueva inspección ofrece las tres escenas de demostración con la escala ya configurada, para recorrer todo el flujo en pocos clics. En el celular, el visor admite pellizcar para hacer zoom y arrastrar con un dedo.
-9. **Español e inglés.** La interfaz cambia entre ES y EN en cualquier momento. Cada inspección y cada plan de tránsito guardan el idioma en que se redacta el informe: Muse Wonder lo recibe en el prompt y los escenarios de demostración vienen en ambos idiomas.
+7. **Probar sin foto.** El diálogo de nueva inspección ofrece las tres escenas de demostración con la escala ya configurada, para recorrer todo el flujo en pocos clics. En el celular, el visor admite pellizcar para hacer zoom y arrastrar con un dedo.
+8. **Español e inglés.** La interfaz cambia entre ES y EN en cualquier momento. Cada inspección y cada plan de tránsito guardan el idioma en que se redacta el informe: Muse Wonder lo recibe en el prompt y los escenarios de demostración vienen en ambos idiomas.
+9. **Accesibilidad.** El panel *Accesibilidad* de la barra superior ajusta el tamaño del texto (100, 115 o 130 %), el alto contraste, la reducción de movimiento y una paleta apta para daltonismo que además distingue la severidad con trazos. Las preferencias se guardan en el navegador y la configuración del sistema (`prefers-contrast`, `prefers-reduced-motion`, colores forzados) se aplica sola. El visor de la foto se maneja con el teclado (+, −, flechas, 0) y anuncia al lector de pantalla el deterioro seleccionado y el zoom. Pestañas, diálogos, regiones dinámicas y botones de ícono tienen ARIA, y todas las fuentes están en rem para respetar el zoom y el tamaño de texto del navegador.
 
 ## Estructura
 

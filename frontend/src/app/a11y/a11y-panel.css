@@ -1,0 +1,164 @@
+:host { display: contents; }
+
+.a11y-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.a11y-trigger:hover { color: var(--text); border-color: var(--text-2); }
+@media (max-width: 640px) { .a11y-trigger { min-height: 44px; min-width: 44px; } }
+.a11y-trigger svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.a11y-trigger circle { fill: currentColor; stroke: none; }
+
+.a11y-panel {
+  position: fixed;
+  inset: auto;
+  top: calc(var(--topbar-h) + 6px);
+  right: 12px;
+  width: min(360px, calc(100vw - 24px));
+  max-height: calc(100vh - var(--topbar-h) - 18px);
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.18);
+}
+
+.a11y-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 8px;
+}
+
+.a11y-head h2 { font-size: 0.9375rem; font-weight: 600; }
+
+.a11y-group {
+  margin: 0;
+  padding: 10px 14px 12px;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.a11y-group legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.a11y-sizes { clear: both; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+
+.a11y-size {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.a11y-size input { position: absolute; opacity: 0; pointer-events: none; }
+.a11y-size:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.a11y-size.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.a11y-size small { color: var(--muted); font-size: 0.75rem; }
+.a11y-size:nth-child(1) .a11y-size-name { font-size: 0.8125rem; }
+.a11y-size:nth-child(2) .a11y-size-name { font-size: 0.9375rem; }
+.a11y-size:nth-child(3) .a11y-size-name { font-size: 1.0625rem; }
+
+.a11y-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.a11y-switch input {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+.a11y-switch input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s;
+}
+
+.a11y-switch input:checked { background: var(--accent); border-color: var(--accent); }
+.a11y-switch input:checked::after { background: #fff; transform: translateX(14px); }
+
+.a11y-help { margin: 2px 0 6px 44px; color: var(--muted); font-size: 0.75rem; }
+
+.a11y-keys summary { font-weight: 500; cursor: pointer; }
+.a11y-keys dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; margin: 10px 0 0; font-size: 0.8125rem; }
+.a11y-keys dd { margin: 0; color: var(--text-2); }
+
+kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.a11y-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.a11y-foot .a11y-help { margin: 0; flex: 1; }
+
+@media (max-width: 1200px) {
+  .a11y-trigger-text { display: none; }
+  .a11y-trigger { padding: 0 6px; }
+}
+
+@media (forced-colors: active) {
+  .a11y-switch input { border-color: ButtonText; }
+  .a11y-switch input:checked { background: Highlight; }
+  .a11y-size.active { outline: 2px solid Highlight; }
+}

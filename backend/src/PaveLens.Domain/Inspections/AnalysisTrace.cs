@@ -26,7 +26,8 @@ public sealed record AnalysisTrace
         long segmentationMs,
         long reasoningMs,
         int reasoningAttempts,
-        int skippedBeyondHorizon)
+        int skippedBeyondHorizon,
+        AgentRunTrace? orchestration = null)
     {
         if (concepts.Count == 0)
         {
@@ -43,6 +44,7 @@ public sealed record AnalysisTrace
         ReasoningMs = reasoningMs;
         ReasoningAttempts = reasoningAttempts;
         SkippedBeyondHorizon = skippedBeyondHorizon;
+        Orchestration = orchestration;
     }
 
     public IReadOnlyList<ConceptTrace> Concepts { get; }
@@ -54,4 +56,5 @@ public sealed record AnalysisTrace
 
     /// <summary>Masks left out because they reach beyond the calibration horizon.</summary>
     public int SkippedBeyondHorizon { get; }
+    public AgentRunTrace? Orchestration { get; }
 }

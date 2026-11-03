@@ -1,0 +1,24 @@
+<section class="agent-panel" aria-labelledby="agent-run-title">
+  <header><h3 id="agent-run-title">{{ 'Orquestación de agentes' | t }}</h3><span class="agent-status" role="status">{{ status() | t }}</span></header>
+  <p class="agent-intro">{{ (run().engine === 'Simulation' ? 'Demostración: secuencia de herramientas sin decisiones de un modelo Meta.' : 'El coordinador Meta delega tareas y verifica resultados mediante herramientas.') | t }}</p>
+  <dl class="agent-facts">
+    <div><dt>{{ 'Coordinador' | t }}</dt><dd>{{ run().coordinatorModel || '—' }}</dd></div>
+    <div><dt>{{ 'Perfil regional' | t }}</dt><dd>{{ profile().name }} · {{ profile().version }}</dd></div>
+  </dl>
+  <p class="agent-note">{{ (profile().jurisdictionValidated ? 'Perfil con referencias configuradas: revisar su vigencia para el proyecto.' : 'Perfil de referencia: no acredita conformidad normativa local.') | t }}</p>
+  <details class="agent-history"><summary>{{ 'Ver herramientas y evidencias' | t }} ({{ run().actions.length }})</summary>
+  <ol class="agent-actions">
+    @for (action of run().actions; track $index) {
+      <li [class.rejected]="action.status === 'Rejected'">
+        <details><summary><span>{{ label(action.agent) | t }}</span><span class="action-status">{{ (action.status === 'Succeeded' ? 'Completado' : 'Corregir') | t }} · {{ action.durationMs | number:'1.0-0' }} ms</span></summary>
+          <p>{{ action.model }} · <code>{{ action.tool }}</code></p><pre>{{ evidence(action.evidence) }}</pre>
+        </details>
+      </li>
+    } @empty { <li>{{ 'Esperando al coordinador…' | t }}</li> }
+  </ol>
+  </details>
+  @if (run().warnings.length) {
+    <details class="agent-warnings"><summary>{{ 'Datos y revisiones pendientes' | t }} ({{ run().warnings.length }})</summary><ul>@for (warning of run().warnings; track $index) { <li>{{ warning | t }}</li> }</ul></details>
+  }
+  @if (run().modelCalls) { <p class="agent-note">{{ 'Llamadas del coordinador' | t }}: {{ run().modelCalls }} · {{ 'Tokens del coordinador' | t }}: {{ run().inputTokens + run().outputTokens | number:'1.0-0' }}. {{ 'No incluye el consumo de los especialistas.' | t }}</p> }
+</section>

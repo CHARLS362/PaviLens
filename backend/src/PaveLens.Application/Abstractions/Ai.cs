@@ -32,7 +32,8 @@ public sealed record DiagnosisRequest(
     string? Notes,
     string? Location,
     IReadOnlyList<MeasuredSegment> Segments,
-    ReportLanguage Language = ReportLanguage.Es);
+    ReportLanguage Language = ReportLanguage.Es,
+    string? RegionalContext = null);
 
 public sealed record DistressFinding(
     int SegmentIndex,

@@ -116,6 +116,14 @@ public sealed class Inspection : Entity
         Touch();
     }
 
+    public void RecordTrace(AnalysisTrace trace)
+    {
+        if (Status is not (InspectionStatus.Pending or InspectionStatus.Processing))
+            throw new DomainException("Solo se puede registrar progreso durante el análisis.");
+        Trace = trace;
+        Touch();
+    }
+
     /// <summary>Records the pipeline step now running, so clients can show real progress.</summary>
     public void AdvanceTo(AnalysisStage stage)
     {
@@ -223,6 +231,9 @@ public sealed class Inspection : Entity
             ?? throw new DomainException("El deterioro no pertenece a esta inspección.");
         distress.UpdateDepth(severity, quantities);
         Pci = Guard.InRange(pci, 0, 100, "Pci");
+        if (Trace is { Orchestration: { } run } trace)
+            Trace = new AnalysisTrace(trace.Concepts, trace.SegmentationMs, trace.ReasoningMs, trace.ReasoningAttempts, trace.SkippedBeyondHorizon,
+                run with { Status = "NeedsReview", Warnings = run.Warnings.Append("Se modificaron medidas de campo después de la auditoría. Las evidencias de ejecución corresponden al cálculo original.").Distinct(StringComparer.Ordinal).ToArray() });
         Touch();
     }
 

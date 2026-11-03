@@ -1,5 +1,7 @@
 # PaveLens backend
 
+See [ORCHESTRATION.md](docs/ORCHESTRATION.md) for the implemented coordinator, native Meta SAM 3.1 adapter, regional snapshots, geographic endpoints and their validation limits.
+
 .NET 10 API that turns a photo of a road into a pavement condition report:
 
 - Meta SAM 3 segments every distress.

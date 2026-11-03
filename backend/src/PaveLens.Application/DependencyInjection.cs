@@ -2,6 +2,7 @@ using PaveLens.Application.Assistant;
 using PaveLens.Application.Inspections;
 using PaveLens.Application.Pavement;
 using PaveLens.Application.Traffic;
+using PaveLens.Application.Orchestration;
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +28,9 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<QuantityEstimator>();
         services.AddSingleton<CostEstimator>();
+        services.AddOptions<OrchestrationOptions>().Bind(configuration.GetSection(OrchestrationOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<RegionalCatalogOptions>().Bind(configuration.GetSection("Regions"));
+        services.AddSingleton<RegionalCatalog>();
         services.AddScoped<InspectionService>();
         services.AddScoped<InspectionProcessor>();
         services.AddScoped<AssistantService>();

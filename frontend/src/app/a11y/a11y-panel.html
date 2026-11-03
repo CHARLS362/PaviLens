@@ -1,0 +1,64 @@
+<button class="a11y-trigger" popovertarget="a11y-panel" [attr.aria-label]="'Opciones de accesibilidad' | t" [title]="'Opciones de accesibilidad' | t">
+  <svg viewBox="0 0 20 20" aria-hidden="true">
+    <circle cx="10" cy="3.6" r="1.7" />
+    <path d="M3.5 6.8c2.2.6 4.3.9 6.5.9s4.3-.3 6.5-.9M10 7.7v4.3M10 12l-2.6 5.4M10 12l2.6 5.4" />
+  </svg>
+  <span class="a11y-trigger-text">{{ 'Accesibilidad' | t }}</span>
+</button>
+
+<div id="a11y-panel" class="a11y-panel" popover role="dialog" aria-labelledby="a11y-title">
+  <header class="a11y-head">
+    <h2 id="a11y-title">{{ 'Accesibilidad' | t }}</h2>
+    <button class="icon-btn" popovertarget="a11y-panel" popovertargetaction="hide" [attr.aria-label]="'Cerrar' | t">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+    </button>
+  </header>
+
+  <fieldset class="a11y-group">
+    <legend>{{ 'Tamaño del texto' | t }}</legend>
+    <div class="a11y-sizes">
+      @for (s of sizes; track s.id) {
+        <label class="a11y-size" [class.active]="settings.prefs().textSize === s.id">
+          <input type="radio" name="a11y-text" [value]="s.id" [checked]="settings.prefs().textSize === s.id" (change)="settings.update({ textSize: s.id })" />
+          <span class="a11y-size-name">{{ s.label | t }}</span>
+          <small>{{ s.sample }}</small>
+        </label>
+      }
+    </div>
+  </fieldset>
+
+  <div class="a11y-group">
+    <label class="a11y-switch">
+      <input type="checkbox" role="switch" [checked]="settings.prefs().highContrast" (change)="settings.update({ highContrast: !settings.prefs().highContrast })" aria-describedby="a11y-contrast-help" />
+      <span>{{ 'Alto contraste' | t }}</span>
+    </label>
+    <p id="a11y-contrast-help" class="a11y-help">{{ 'Textos secundarios y bordes más oscuros, y un foco de teclado más grueso.' | t }}</p>
+
+    <label class="a11y-switch">
+      <input type="checkbox" role="switch" [checked]="settings.prefs().colorSafe" (change)="settings.update({ colorSafe: !settings.prefs().colorSafe })" aria-describedby="a11y-color-help" />
+      <span>{{ 'Colores para daltonismo' | t }}</span>
+    </label>
+    <p id="a11y-color-help" class="a11y-help">{{ 'Severidad y PCI con colores distinguibles en protanopía, deuteranopía y tritanopía, y contornos con trazos distintos por severidad.' | t }}</p>
+
+    <label class="a11y-switch">
+      <input type="checkbox" role="switch" [checked]="settings.prefs().reduceMotion" (change)="settings.update({ reduceMotion: !settings.prefs().reduceMotion })" aria-describedby="a11y-motion-help" />
+      <span>{{ 'Reducir movimiento' | t }}</span>
+    </label>
+    <p id="a11y-motion-help" class="a11y-help">{{ 'Sin animaciones ni transiciones; el zoom a un deterioro es instantáneo.' | t }}</p>
+  </div>
+
+  <details class="a11y-group a11y-keys">
+    <summary>{{ 'Atajos de teclado' | t }}</summary>
+    <dl>
+      @for (k of shortcuts; track k.action) {
+        <dt><kbd>{{ k.keys }}</kbd></dt>
+        <dd>{{ k.action | t }}</dd>
+      }
+    </dl>
+  </details>
+
+  <footer class="a11y-foot">
+    <p class="a11y-help">{{ 'Las preferencias se guardan en este navegador. La configuración de accesibilidad del sistema también se respeta.' | t }}</p>
+    <button class="btn btn-text" (click)="settings.reset()">{{ 'Restablecer' | t }}</button>
+  </footer>
+</div>

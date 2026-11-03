@@ -1,0 +1,27 @@
+:host { display:block; height:100%; min-height:0; }
+.geo-layout { display:grid; grid-template-columns:minmax(0,1fr) 360px; height:100%; }
+.geo-view { min-width:0; display:flex; flex-direction:column; background:var(--surface-2); }
+header { padding:16px 20px; border-bottom:1px solid var(--border); background:var(--surface); }
+h1 { font-size:1.125rem; } h2 { font-size:1rem; } h3 { font-size:.875rem; margin-top:12px; }
+header p,.geo-caption { font-size:.8125rem; color:var(--muted); }
+.geo-canvas { position:relative; flex:1; min-height:380px; overflow:hidden; background:#e8ece7; }
+svg { width:100%; height:100%; position:absolute; inset:0; }
+.geo-edge { fill:none; stroke:#1d4f91; stroke-width:5; stroke-opacity:.5; cursor:pointer; }
+.geo-edge:hover,.geo-edge.selected { stroke:#0e3b75; stroke-width:8; stroke-opacity:1; }
+.geo-edge.closed { stroke:#b42318; stroke-width:10; stroke-opacity:1; }
+.geo-route { fill:none; stroke:#0072b2; stroke-width:6; stroke-dasharray:10 4; pointer-events:none; }
+.geo-navigation { position:absolute; top:12px; left:12px; display:flex; flex-wrap:wrap; gap:4px; max-width:150px; }
+.geo-navigation button { min-width:44px; min-height:44px; border:1px solid var(--border-strong); border-radius:6px; background:var(--surface); cursor:pointer; font-size:1.125rem; }
+.geo-credit { position:absolute; bottom:0; right:0; padding:4px 8px; background:#fffffff0; color:#123e69; font-size:.75rem; }
+.geo-panel { padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; background:var(--surface); border-left:1px solid var(--border); min-width:0; }
+.geo-panel label { font-weight:500; font-size:.8125rem; }
+.geo-panel input,.geo-panel select { width:100%; min-height:40px; }
+.geo-panel .btn { height:auto; min-height:42px; white-space:normal; }
+.geo-presets { display:flex; flex-wrap:wrap; gap:6px; }
+.geo-fields { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:8px; }
+.geo-caption { padding:8px 12px; }
+.geo-panel .geo-caption { padding:0; }
+dl { margin:0; font-size:.8125rem; } dl div { display:flex; justify-content:space-between; gap:12px; padding:4px 0; } dd { margin:0; }
+.geo-notes { padding-left:18px; font-size:.75rem; color:var(--muted); }
+.geo-error { color:var(--danger); font-size:.8125rem; }
+@media(max-width:1100px) { .geo-layout { height:auto; grid-template-columns:1fr; } .geo-canvas { flex:none; height:55vh; } .geo-panel { overflow:visible; border-left:0; border-top:1px solid var(--border); } }

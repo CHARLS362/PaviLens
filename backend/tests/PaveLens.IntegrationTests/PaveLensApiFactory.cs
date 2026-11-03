@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using PaveLens.Application.Abstractions;
 using PaveLens.Application.Inspections;
+using PaveLens.Application.Orchestration;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -23,6 +24,8 @@ public class PaveLensApiFactory : WebApplicationFactory<Program>
 
     /// <summary>Set before the first request to replace the segmentation model.</summary>
     public IDistressSegmenter? Segmenter { get; init; }
+    public IDiagnosticReasoner? Reasoner { get; init; }
+    public IInspectionCoordinator? Coordinator { get; init; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -38,12 +41,13 @@ public class PaveLensApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Ai:Provider", "Simulation");
         builder.UseSetting("RateLimiting:AiRequestsPerMinute", "1000");
 
-        if (Segmenter is { } segmenter)
+        if (Segmenter is not null || Reasoner is not null || Coordinator is not null)
         {
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<IDistressSegmenter>();
-                services.AddSingleton(segmenter);
+                if (Segmenter is { } segmenter) { services.RemoveAll<IDistressSegmenter>(); services.AddSingleton(segmenter); }
+                if (Reasoner is { } reasoner) { services.RemoveAll<IDiagnosticReasoner>(); services.AddSingleton(reasoner); }
+                if (Coordinator is { } coordinator) { services.RemoveAll<IInspectionCoordinator>(); services.AddSingleton(coordinator); }
             });
         }
     }

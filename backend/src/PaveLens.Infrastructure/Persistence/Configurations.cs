@@ -89,14 +89,14 @@ internal sealed class InspectionConfiguration : IEntityTypeConfiguration<Inspect
 
     private sealed record ConceptJson(string Concept, int Masks);
 
-    private sealed record TraceJson(ConceptJson[] Concepts, long SegmentationMs, long ReasoningMs, int ReasoningAttempts, int SkippedBeyondHorizon);
+    private sealed record TraceJson(ConceptJson[] Concepts, long SegmentationMs, long ReasoningMs, int ReasoningAttempts, int SkippedBeyondHorizon, AgentRunTrace? Orchestration = null);
 
     private static string? SerializeTrace(AnalysisTrace? t) =>
         t is null
             ? null
             : JsonSerializer.Serialize(new TraceJson(
                 t.Concepts.Select(c => new ConceptJson(c.Concept, c.Masks)).ToArray(),
-                t.SegmentationMs, t.ReasoningMs, t.ReasoningAttempts, t.SkippedBeyondHorizon));
+                t.SegmentationMs, t.ReasoningMs, t.ReasoningAttempts, t.SkippedBeyondHorizon, t.Orchestration));
 
     private static AnalysisTrace? DeserializeTrace(string? json)
     {
@@ -108,7 +108,7 @@ internal sealed class InspectionConfiguration : IEntityTypeConfiguration<Inspect
         var t = JsonSerializer.Deserialize<TraceJson>(json)!;
         return new AnalysisTrace(
             t.Concepts.Select(c => new ConceptTrace(c.Concept, c.Masks)).ToList(),
-            t.SegmentationMs, t.ReasoningMs, t.ReasoningAttempts, t.SkippedBeyondHorizon);
+            t.SegmentationMs, t.ReasoningMs, t.ReasoningAttempts, t.SkippedBeyondHorizon, t.Orchestration);
     }
 }
 

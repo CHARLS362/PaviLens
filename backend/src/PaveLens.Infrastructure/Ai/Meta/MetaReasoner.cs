@@ -133,6 +133,7 @@ internal sealed class MetaReasoner(MetaChatClient chat) : IDiagnosticReasoner
             ["title"] = request.Title,
             ["notes"] = request.Notes,
             ["location"] = request.Location,
+            ["regionalContext"] = request.RegionalContext,
             ["language"] = request.Language.ToString().ToLowerInvariant(),
             ["image"] = new JsonObject { ["width"] = request.Image.Width, ["height"] = request.Image.Height },
             ["segments"] = segments

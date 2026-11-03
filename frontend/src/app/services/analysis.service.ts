@@ -17,7 +17,7 @@ import {
   TrafficPlan,
   TrafficSimulation,
   WorkPeriod,
-  AiStatus
+  AiStatus, RegionalConfiguration
 } from '../models/analysis.model';
 
 /** Client for the PaveLens API v1. Requests are relative and reach the backend through the dev proxy. */
@@ -44,6 +44,9 @@ export class AnalysisService {
     if (request.referenceWidthM) form.append('referenceWidthM', String(request.referenceWidthM));
     if (request.calibration) form.append('calibration', JSON.stringify(request.calibration));
     if (request.language) form.append('language', request.language);
+    if (request.regionId) form.append('regionId', request.regionId);
+    if (request.latitude != null) form.append('latitude', String(request.latitude));
+    if (request.longitude != null) form.append('longitude', String(request.longitude));
     form.append('image', request.image, request.fileName);
     return this.http.post<InspectionDetail>(this.baseUrl, form);
   }
@@ -92,6 +95,10 @@ export class AnalysisService {
 
   aiStatus(): Observable<AiStatus> {
     return this.http.get<AiStatus>('/api/v1/ai/status');
+  }
+
+  regions(): Observable<RegionalConfiguration[]> {
+    return this.http.get<RegionalConfiguration[]>('/api/v1/regions');
   }
 
   /** Human-readable message from a problem+json error, falling back to a generic text. */

@@ -72,7 +72,8 @@ public sealed record AnalysisTraceDto(
     long SegmentationMs,
     long ReasoningMs,
     int ReasoningAttempts,
-    int SkippedBeyondHorizon);
+    int SkippedBeyondHorizon,
+    AgentRunTrace? Orchestration = null);
 
 public sealed record InspectionDetailDto(
     Guid Id,

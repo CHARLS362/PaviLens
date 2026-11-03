@@ -72,6 +72,7 @@ api.MapAssistantEndpoints();
 api.MapImageEndpoints();
 api.MapTrafficEndpoints();
 api.MapAiStatusEndpoints();
+api.MapOrchestrationEndpoints();
 
 await DatabaseInitializer.InitializeAsync(app.Services, app.Environment.ContentRootPath);
 await app.RunAsync();

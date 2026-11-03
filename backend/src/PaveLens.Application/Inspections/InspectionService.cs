@@ -3,6 +3,7 @@ using PaveLens.Application.Abstractions;
 using PaveLens.Application.Common;
 using PaveLens.Application.Images;
 using PaveLens.Application.Pavement;
+using PaveLens.Application.Orchestration;
 using PaveLens.Domain.Common;
 using PaveLens.Domain.Images;
 using PaveLens.Domain.Inspections;
@@ -25,6 +26,8 @@ public sealed partial class InspectionService(
     IValidator<SetDepthCommand> depthValidator,
     QuantityEstimator quantityEstimator,
     CostEstimator costEstimator,
+    RegionalCatalog regions,
+    IOptions<AnalysisOptions> analysisOptions,
     IOptions<UploadOptions> uploadOptions,
     TimeProvider clock,
     ILogger<InspectionService> logger)
@@ -34,6 +37,7 @@ public sealed partial class InspectionService(
     public async Task<InspectionDetailDto> CreateAsync(CreateInspectionCommand command, CancellationToken cancellationToken)
     {
         await validator.ValidateAndThrowAsync(command, cancellationToken);
+        var profile = regions.Get(command.RegionId);
 
         var bytes = await ReadLimitedAsync(command.Image, cancellationToken);
         var info = ImageInspector.Inspect(bytes)
@@ -65,6 +69,10 @@ public sealed partial class InspectionService(
         var inspection = Inspection.Create(
             command.Title, command.Notes, command.Location, command.RoadSegmentId,
             image.Id, command.ReferenceWidthM, calibration, command.Language, now);
+        inspection.RecordTrace(new AnalysisTrace(
+            analysisOptions.Value.SegmentationConcepts.Select(c => new ConceptTrace(c, 0)).ToArray(), 0, 0, 1, 0,
+            new AgentRunTrace(Guid.NewGuid(), "Pending", "", "Pending", RegionalCatalog.Snapshot(profile),
+                command.Latitude, command.Longitude, [], [])));
         inspections.Add(inspection);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -116,7 +124,9 @@ public sealed partial class InspectionService(
         var severity = distress.Type == DistressType.Pothole
             ? QuantityEstimator.PotholeSeverity(command.DepthM, (distress.Measurement.LengthM + distress.Measurement.WidthM) / 2)
             : distress.Severity;
-        var quantities = quantityEstimator.Estimate(distress.Measurement, command.DepthM, DepthSource.Measured);
+        var estimator = inspection.Trace?.Orchestration is { } run
+            ? new QuantityEstimator(Options.Create(RegionalCatalog.Restore(run.RegionalProfileJson).Pavement)) : quantityEstimator;
+        var quantities = estimator.Estimate(distress.Measurement, command.DepthM, DepthSource.Measured);
 
         // The new severity must count in the PCI before the aggregate accepts it.
         var inputs = inspection.Distresses.Select(d => new PciInput(

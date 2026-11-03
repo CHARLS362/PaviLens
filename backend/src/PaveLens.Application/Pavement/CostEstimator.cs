@@ -1,4 +1,6 @@
 using PaveLens.Application.Inspections;
+using PaveLens.Application.Orchestration;
+using PaveLens.Domain.Common;
 using PaveLens.Domain.Inspections;
 using Microsoft.Extensions.Options;
 
@@ -13,6 +15,18 @@ public sealed class CostEstimator(IOptions<PavementOptions> options, QuantityEst
     private readonly PavementOptions _options = options.Value;
 
     public BudgetDto Estimate(InspectionDetailDto inspection)
+    {
+        if (inspection.Trace?.Orchestration is { } run)
+        {
+            var profile = RegionalCatalog.Restore(run.RegionalProfileJson);
+            if (!profile.PricesAvailable) throw new DomainException("Esta región no tiene un libro de precios local: configura uno antes de emitir un presupuesto.");
+            var estimator = new CostEstimator(Options.Create(profile.Pavement), new QuantityEstimator(Options.Create(profile.Pavement)));
+            return estimator.EstimateCore(inspection);
+        }
+        return EstimateCore(inspection);
+    }
+
+    private BudgetDto EstimateCore(InspectionDetailDto inspection)
     {
         var prices = _options.Prices;
         var patches = inspection.Distresses.Where(d => d.Quantities is not null).ToList();
