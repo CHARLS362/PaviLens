@@ -1,16 +1,45 @@
 :host { display:block; }
 .agent-panel { padding:16px; border-bottom:1px solid var(--border); background:var(--surface); font-size:.8125rem; }
+.agent-panel.compact { padding:0; border:0; background:transparent; }
 header { display:flex; flex-wrap:wrap; align-items:center; gap:8px; justify-content:space-between; }
 h3 { font-size:.875rem; }
-.agent-status { color:var(--accent); font-weight:600; }
-.agent-intro { margin:8px 0; }
-.agent-facts { margin:10px 0; display:grid; gap:8px; }
-.agent-facts dt,.agent-note { color:var(--muted); font-size:.75rem; }
-.agent-facts dd { margin:0; overflow-wrap:anywhere; }
-.agent-actions { margin:12px 0; padding-left:22px; }
-.agent-actions li { padding:4px 0; }
-summary { cursor:pointer; padding:8px 0; min-height:44px; }
-.action-status { display:block; color:var(--muted); font-size:.75rem; }
-pre { max-height:260px; overflow:auto; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; font-size:.75rem; white-space:pre-wrap; overflow-wrap:anywhere; }
-.rejected,.agent-warnings { color:var(--danger); }
-.agent-warnings ul { padding-left:20px; }
+h4 { font-size:.8125rem; margin:0 0 6px; }
+.agent-status { font-weight:600; font-size:.75rem; padding:2px 10px; border-radius:999px; background:var(--surface-2); color:var(--text-2); }
+.agent-status.ok { background:color-mix(in srgb, var(--pci-a) 18%, transparent); color:var(--pci-a); }
+.agent-status.warn { background:color-mix(in srgb, var(--sev-medium) 18%, transparent); color:var(--sev-medium); }
+.agent-status.bad { background:color-mix(in srgb, var(--danger) 15%, transparent); color:var(--danger); }
+.agent-status.busy { background:var(--accent-soft); color:var(--accent); }
+.agent-intro { margin:8px 0 12px; color:var(--text-2); }
+.muted { color:var(--muted); }
+
+.steps { list-style:none; margin:0; padding:0; }
+.step { display:grid; grid-template-columns:22px 1fr; gap:10px; position:relative; padding-bottom:12px; }
+.step:not(:last-child)::before { content:''; position:absolute; left:10px; top:22px; bottom:0; width:2px; background:var(--border); }
+.step.done:not(:last-child)::before { background:var(--accent-soft); }
+.dot { width:22px; height:22px; border-radius:50%; display:grid; place-items:center; font-size:.75rem; font-weight:700;
+  background:var(--surface-2); color:var(--muted); border:1px solid var(--border); z-index:1; }
+.done .dot { background:var(--accent); color:var(--on); border-color:var(--accent); }
+.failed .dot { background:var(--danger); color:#fff; border-color:var(--danger); }
+.running .dot { border-color:var(--accent); }
+.spinner { width:10px; height:10px; border-radius:50%; border:2px solid var(--accent); border-right-color:transparent; animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation:none; } }
+.step-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 8px; min-height:22px; }
+.step-label { font-weight:600; }
+.pending .step-label { color:var(--muted); }
+.engine { font-family:var(--mono); font-size:.6875rem; padding:1px 6px; border-radius:4px; background:var(--surface-2); color:var(--text-2); }
+.engine.meta { background:var(--accent-soft); color:var(--accent); }
+.time { margin-left:auto; color:var(--muted); font-size:.75rem; font-variant-numeric:tabular-nums; }
+.step-summary { margin:2px 0 0; overflow-wrap:anywhere; }
+.failed .step-summary { color:var(--danger); }
+.correction { margin:4px 0 0; font-size:.75rem; color:var(--sev-medium); }
+.evidence summary { cursor:pointer; color:var(--muted); font-size:.75rem; padding:4px 0; }
+pre { max-height:240px; overflow:auto; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; font-size:.6875rem; white-space:pre-wrap; overflow-wrap:anywhere; }
+
+.review { margin:4px 0 10px; padding:10px 12px; border-radius:8px; background:color-mix(in srgb, var(--sev-medium) 10%, transparent); border:1px solid color-mix(in srgb, var(--sev-medium) 35%, transparent); }
+.review ul { margin:0; padding-left:18px; }
+.review li + li { margin-top:4px; }
+.review.ok-note { background:color-mix(in srgb, var(--pci-a) 10%, transparent); border-color:color-mix(in srgb, var(--pci-a) 35%, transparent); }
+.assumptions summary { cursor:pointer; padding:6px 0; color:var(--text-2); }
+.assumptions ul { margin:0 0 8px; padding-left:18px; color:var(--text-2); }
+.usage { margin:6px 0 0; color:var(--muted); font-size:.75rem; overflow-wrap:anywhere; }

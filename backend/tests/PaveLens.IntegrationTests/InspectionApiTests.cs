@@ -32,6 +32,20 @@ public sealed class InspectionApiTests(PaveLensApiFactory factory) : IClassFixtu
         CreateAndWaitAsync(Upload("av-el-sol-bache.jpg", referenceWidthM: 3.0, roadSegmentId: "V13"));
 
     [Fact]
+    public async Task EveryStepSaysWhatItFoundAndReviewerIssuesStayApartFromAssumptions()
+    {
+        var run = (await CreatePotholeAsync()).Trace!.Orchestration!;
+
+        Assert.All(run.Actions, a => Assert.False(string.IsNullOrWhiteSpace(a.Summary)));
+        Assert.Contains("zonas dañadas", run.Actions.Single(a => a.Tool == "segment_image").Summary, StringComparison.Ordinal);
+        Assert.StartsWith("PCI ", run.Actions.Single(a => a.Tool == "compute_report").Summary, StringComparison.Ordinal);
+        var issue = Assert.Single(run.ReviewIssues!);
+        Assert.DoesNotContain(issue, run.Warnings);
+        Assert.Contains(run.Warnings, w => w.StartsWith("Profundidad supuesta", StringComparison.Ordinal));
+        Assert.Equal("NeedsReview", run.Status);
+    }
+
+    [Fact]
     public async Task NadirPhotoIsMeasuredInMetresWithAssumedDepth()
     {
         var detail = await CreatePotholeAsync();

@@ -37,6 +37,7 @@ public sealed partial class InspectionProcessor(
                 ? RegionalCatalog.Restore(selection.RegionalProfileJson) : regions.Get(null);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(TimeSpan.FromSeconds(orchestrationOptions.Value.TimeoutSeconds));
+            ModelUsageMeter.Start();
             var session = new InspectionToolSession(inspection, image, payload, segmenter, reasoner, auditor,
                 mobility, costs, profile, options.Value, unitOfWork, coordinator, clock, geography, orchestrationOptions.Value);
             try

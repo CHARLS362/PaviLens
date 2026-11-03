@@ -35,8 +35,15 @@ export interface RegionalConfiguration {
 export interface AgentRun {
   runId: string; engine: string; coordinatorModel: string; status: string;
   regionalProfileJson: string; latitude?: number; longitude?: number;
-  actions: { agent: string; tool: string; model: string; status: string; durationMs: number; evidence: string }[];
+  actions: AgentAction[];
   warnings: string[]; modelCalls: number; inputTokens: number; outputTokens: number; mobilityJson?: string;
+  /** The independent reviewer's findings, kept apart from the method's assumptions in warnings. */
+  reviewIssues?: string[];
+}
+export interface AgentAction {
+  agent: string; tool: string; model: string; status: string; durationMs: number; evidence: string;
+  /** One plain sentence saying what the step found. */
+  summary?: string; tokens?: number;
 }
 export type MessageRole = 'User' | 'Assistant';
 

@@ -1,24 +1,77 @@
-<section class="agent-panel" aria-labelledby="agent-run-title">
-  <header><h3 id="agent-run-title">{{ 'Orquestación de agentes' | t }}</h3><span class="agent-status" role="status">{{ status() | t }}</span></header>
-  <p class="agent-intro">{{ (run().engine === 'Simulation' ? 'Demostración: secuencia de herramientas sin decisiones de un modelo Meta.' : 'El coordinador Meta delega tareas y verifica resultados mediante herramientas.') | t }}</p>
-  <dl class="agent-facts">
-    <div><dt>{{ 'Coordinador' | t }}</dt><dd>{{ run().coordinatorModel || '—' }}</dd></div>
-    <div><dt>{{ 'Perfil regional' | t }}</dt><dd>{{ profile().name }} · {{ profile().version }}</dd></div>
-  </dl>
-  <p class="agent-note">{{ (profile().jurisdictionValidated ? 'Perfil con referencias configuradas: revisar su vigencia para el proyecto.' : 'Perfil de referencia: no acredita conformidad normativa local.') | t }}</p>
-  <details class="agent-history"><summary>{{ 'Ver herramientas y evidencias' | t }} ({{ run().actions.length }})</summary>
-  <ol class="agent-actions">
-    @for (action of run().actions; track $index) {
-      <li [class.rejected]="action.status === 'Rejected'">
-        <details><summary><span>{{ label(action.agent) | t }}</span><span class="action-status">{{ (action.status === 'Succeeded' ? 'Completado' : 'Corregir') | t }} · {{ action.durationMs | number:'1.0-0' }} ms</span></summary>
-          <p>{{ action.model }} · <code>{{ action.tool }}</code></p><pre>{{ evidence(action.evidence) }}</pre>
-        </details>
-      </li>
-    } @empty { <li>{{ 'Esperando al coordinador…' | t }}</li> }
-  </ol>
-  </details>
-  @if (run().warnings.length) {
-    <details class="agent-warnings"><summary>{{ 'Datos y revisiones pendientes' | t }} ({{ run().warnings.length }})</summary><ul>@for (warning of run().warnings; track $index) { <li>{{ warning | t }}</li> }</ul></details>
+<section class="agent-panel" [class.compact]="compact()" aria-labelledby="agent-run-title">
+  @if (!compact()) {
+    <header>
+      <h3 id="agent-run-title">{{ 'Cómo trabajó la IA' | t }}</h3>
+      <span class="agent-status" [class]="'agent-status ' + statusClass()" role="status">{{ status() | t }}</span>
+    </header>
+    <p class="agent-intro">
+      @if (run().engine === 'Simulation') {
+        {{ 'Demostración: los pasos se ejecutan sin llamar a Meta.' | t }}
+      } @else {
+        {{ 'Muse Wonder coordina a especialistas de Meta y verifica cada resultado; las cifras las calcula el código.' | t }}
+      }
+    </p>
   }
-  @if (run().modelCalls) { <p class="agent-note">{{ 'Llamadas del coordinador' | t }}: {{ run().modelCalls }} · {{ 'Tokens del coordinador' | t }}: {{ run().inputTokens + run().outputTokens | number:'1.0-0' }}. {{ 'No incluye el consumo de los especialistas.' | t }}</p> }
+
+  <ol class="steps">
+    @for (step of steps(); track step.tool) {
+      <li class="step" [class]="'step ' + step.state">
+        <span class="dot" aria-hidden="true">
+          @switch (step.state) { @case ('done') { ✓ } @case ('failed') { ! } @case ('running') { <span class="spinner"></span> } @default { · } }
+        </span>
+        <div class="step-body">
+          <div class="step-head">
+            <span class="step-label">{{ step.label | t }}</span>
+            @if (step.action; as a) {
+              <span class="engine" [class.meta]="engine(a.model).meta">{{ engine(a.model).meta ? 'Meta · ' + a.model : (engine(a.model).label | t) }}</span>
+              <span class="time">{{ seconds(a.durationMs) }}</span>
+            }
+          </div>
+          <p class="step-summary">
+            @if (step.action?.summary; as summary) { {{ summary }} }
+            @else if (step.state === 'running') { {{ step.what | t }}… }
+            @else if (step.state === 'failed') { {{ (step.corrections.at(-1)?.summary ?? step.corrections.at(-1)?.evidence ?? 'No se completó.') }} }
+            @else { <span class="muted">{{ step.what | t }}</span> }
+          </p>
+          @if (step.corrections.length && step.action && !compact()) {
+            <p class="correction">{{ 'El coordinador corrigió este paso tras {n} intento(s) rechazado(s).' | t: { n: step.corrections.length } }}</p>
+          }
+          @if (step.action; as a) {
+            @if (!compact()) {
+              <details class="evidence">
+                <summary>{{ 'Ver evidencia técnica' | t }}@if (a.tokens) { · {{ a.tokens | number:'1.0-0' }} tokens }</summary>
+                <p class="muted"><code>{{ a.tool }}</code> · {{ a.agent }}</p>
+                @for (c of step.corrections; track $index) { <p class="correction">{{ 'Rechazado' | t }}: {{ c.summary ?? c.evidence }}</p> }
+                <pre>{{ evidence(a.evidence) }}</pre>
+              </details>
+            }
+          }
+        </div>
+      </li>
+    }
+  </ol>
+
+  @if (!compact()) {
+    @if (reviewIssues().length) {
+      <div class="review">
+        <h4>{{ 'Observaciones del revisor' | t }} ({{ reviewIssues().length }})</h4>
+        <ul>@for (issue of reviewIssues(); track $index) { <li>{{ issue }}</li> }</ul>
+      </div>
+    } @else if (run().status === 'Ready') {
+      <p class="review ok-note">{{ 'El revisor independiente no encontró observaciones.' | t }}</p>
+    }
+
+    @if (run().warnings.length) {
+      <details class="assumptions">
+        <summary>{{ 'Supuestos del método' | t }} ({{ run().warnings.length }})</summary>
+        <ul>@for (warning of run().warnings; track $index) { <li>{{ warning | t }}</li> }</ul>
+      </details>
+    }
+
+    @if (run().modelCalls) {
+      <p class="usage">
+        {{ '{n} llamadas a Meta' | t: { n: run().modelCalls } }} · {{ tokens() | number:'1.0-0' }} tokens · {{ 'coordinador' | t }} {{ run().coordinatorModel }}
+      </p>
+    }
+  }
 </section>

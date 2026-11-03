@@ -318,6 +318,9 @@
             }
             <div class="processing-body">
               <h3>{{ 'Analizando la fotografía' | t }}</h3>
+              @if (selectedAnalysis()?.trace?.orchestration; as run) {
+                <app-agent-run-panel [run]="run" [compact]="true" />
+              } @else {
               <ol class="stages">
                 @for (stage of pipelineStages; track stage; let i = $index) {
                   <li [class.done]="i < pipelineStage()" [class.current]="i === pipelineStage()" [attr.aria-current]="i === pipelineStage() ? 'step' : null">
@@ -326,6 +329,7 @@
                   </li>
                 }
               </ol>
+              }
             </div>
           </div>
         </div>
@@ -347,13 +351,14 @@
         <!-- ===== EVALUATION ===== -->
         @if (activeTab() === 'distress') {
           <div class="inspector-body" role="tabpanel" id="inspector-panel" aria-labelledby="tab-distress" tabindex="0">
-            @if (current.trace?.orchestration; as run) { <app-agent-run-panel [run]="run" /> }
             <section class="section">
               <h3 class="section-title">{{ 'Diagnóstico del tramo' | t }} <span class="source">{{ source('reasoning') }}</span></h3>
               <p class="prose">{{ current.summary ?? ((isRunning(current.status) ? 'Analizando…' : 'Sin diagnóstico.') | t) }}</p>
             </section>
 
-            @if (current.trace; as t) {
+            @if (current.trace?.orchestration; as run) {
+              <app-agent-run-panel [run]="run" />
+            } @else if (current.trace; as t) {
               <section class="section">
                 <h3 class="section-title">{{ 'Pipeline Meta AI' | t }} <span class="source">{{ (isSimulation() ? 'Simulación · sin llamadas a Meta' : 'Modelos Meta') | t }}</span></h3>
                 <ol class="trace">
@@ -400,14 +405,14 @@
                     <p class="trace-note">{{ 'Los números salen de fórmulas deterministas, no del modelo de lenguaje.' | t }}</p>
                   </li>
                 </ol>
-                @if (t.skippedBeyondHorizon) {
-                  <p class="callout">
-                    {{ (t.skippedBeyondHorizon === 1
-                      ? '1 máscara quedó más allá del horizonte de la calibración: no se midió ni cuenta en el PCI.'
-                      : '{n} máscaras quedaron más allá del horizonte de la calibración: no se midieron ni cuentan en el PCI.') | t: { n: t.skippedBeyondHorizon } }}
-                  </p>
-                }
               </section>
+            }
+            @if (current.trace?.skippedBeyondHorizon; as skipped) {
+              <p class="callout">
+                {{ (skipped === 1
+                  ? '1 máscara quedó más allá del horizonte de la calibración: no se midió ni cuenta en el PCI.'
+                  : '{n} máscaras quedaron más allá del horizonte de la calibración: no se midieron ni cuentan en el PCI.') | t: { n: skipped } }}
+              </p>
             }
 
             @if (current.pci; as pci) {

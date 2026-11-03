@@ -78,6 +78,7 @@ internal sealed class MetaSam31Segmenter(HttpClient http, IOptions<AiOptions> op
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", string.IsNullOrWhiteSpace(_meta.Sam31.ApiKey) ? _meta.Reasoning.ApiKey : _meta.Sam31.ApiKey);
         using var response = await http.SendAsync(message, cancellationToken);
         if (!response.IsSuccessStatusCode) throw new ModelUnavailableException($"Meta SAM 3.1 respondió {(int)response.StatusCode}.");
+        ModelUsageMeter.Current?.Record(0, 0); // SAM reports no tokens; the call still counts.
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
         if (body.Length > 16 * 1024 * 1024) throw new ModelOutputException("La respuesta SAM supera el tamaño permitido.");
         var geometry = await decoder.DecodeAsync(body, cancellationToken);

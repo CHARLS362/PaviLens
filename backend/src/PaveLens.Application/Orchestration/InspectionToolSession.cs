@@ -44,6 +44,8 @@ internal sealed class InspectionToolSession(
     private long _segmentationMs, _reasoningMs;
     private bool _regionLoaded, _computed, _mobilityDone, _verified, _finished;
     private string _reviewStatus = "NeedsReview";
+    private string[] _reviewIssues = [];
+    private string? _summary;
     private string? _mobilityJson;
     private GeographicNetwork? _cityNetwork;
     private bool _cityAssessed;
@@ -59,6 +61,8 @@ internal sealed class InspectionToolSession(
         };
         var model = "deterministic-code";
         _tool = name;
+        _summary = null;
+        var tokensBefore = ModelUsageMeter.Current?.Tokens ?? 0;
         AgentToolResult result;
         try
         {
@@ -73,6 +77,7 @@ internal sealed class InspectionToolSession(
                     if (!profile.JurisdictionValidated) Warn("Perfil regional de referencia; no acredita conformidad normativa local.");
                     if (!profile.PricesAvailable) Warn("Falta un libro de precios local. No se emitirá presupuesto para esta región.");
                     result = Ok(new { profile.Id, profile.Name, profile.Version, profile.CountryCode, profile.ConditionMethod, profile.JurisdictionValidated, profile.PricesAvailable, profile.Sources });
+                    _summary = $"{profile.Name} · {profile.Version}";
                     break;
                 case "load_city_network":
                     Require(_regionLoaded, "Carga primero el perfil regional.");
@@ -83,15 +88,21 @@ internal sealed class InspectionToolSession(
                         {
                             _cityNetwork = await geography.LoadAsync(latitude, longitude, 600, cancellationToken);
                             result = Ok(new { status = "Loaded", _cityNetwork.Id, _cityNetwork.RetrievedAtUtc, streets = _cityNetwork.Edges.Count, _cityNetwork.Warnings });
+                            _summary = Say($"Red vial real: {_cityNetwork.Edges.Count} tramos de calle", $"Real street network: {_cityNetwork.Edges.Count} street segments");
                         }
                         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or ModelUnavailableException or DomainException)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
                             Warn("La consulta geográfica no estuvo disponible; carga el mapa para revisar la red antes de planificar un cierre.");
                             result = Ok(new { status = "Unavailable", reason = ex.Message });
+                            _summary = Say("Consulta geográfica no disponible", "Geographic lookup unavailable");
                         }
                     }
-                    else result = Ok(new { status = "NeedsInput", required = "Coordenadas de la inspección para obtener una red real." });
+                    else
+                    {
+                        result = Ok(new { status = "NeedsInput", required = "Coordenadas de la inspección para obtener una red real." });
+                        _summary = Say("Sin coordenadas: no se consultó la red vial real", "No coordinates: the real street network was not queried");
+                    }
                     _cityAssessed = true;
                     break;
                 case "segment_image":
@@ -110,6 +121,8 @@ internal sealed class InspectionToolSession(
                     Require(_segmentation.Segments.Select(s => s.Index).Distinct().Count() == _segmentation.Segments.Count, "La segmentación repitió identificadores.");
                     _measured.Clear(); _diagnosis = null; _computed = false; _verified = false; _mobilityDone = false;
                     result = Ok(new { model, concepts = _concepts, masks = _segmentation.Segments.Count });
+                    _summary = Say($"{_segmentation.Segments.Count} zonas dañadas encontradas", $"{_segmentation.Segments.Count} damaged areas found") + " (" +
+                        string.Join(" · ", _concepts.Select(c => $"{c} {_segmentation.Segments.Count(s => s.Concept.Equals(c, StringComparison.OrdinalIgnoreCase))}")) + ")";
                     break;
                 case "measure_segments":
                     Require(_segmentation is not null, "Ejecuta segment_image primero.");
@@ -128,6 +141,8 @@ internal sealed class InspectionToolSession(
                     _area = projection.SurveyedAreaM2;
                     _diagnosis = null; _computed = false; _verified = false; _mobilityDone = false;
                     result = Ok(new { surveyedAreaM2 = _area, skippedBeyondHorizon = _segmentation.Segments.Count - _measured.Count, segments = _measured.Select(m => new { m.Segment.Index, m.Measurement }) });
+                    var damagedM2 = _measured.Sum(m => m.Measurement.AreaM2);
+                    _summary = Say($"{damagedM2:0.00} m² dañados en {_area:0.#} m² de calzada", $"{damagedM2:0.00} m² damaged in {_area:0.#} m² of pavement");
                     break;
                 case "diagnose_distresses":
                     Require(_regionLoaded && _measured.Count > 0, "Se requieren perfil regional y medidas.");
@@ -142,6 +157,8 @@ internal sealed class InspectionToolSession(
                     ValidateDiagnosis(_diagnosis);
                     _computed = false; _verified = false; _mobilityDone = false;
                     result = Ok(new { model, _diagnosis.Summary, findings = _diagnosis.Findings, _diagnosis.Attempts });
+                    _summary = string.Join(" · ", _diagnosis.Findings.GroupBy(f => f.Type).OrderByDescending(g => g.Count()).Select(g => $"{g.Count()} {TypeLabel(g.Key, g.Count() > 1)}"))
+                        + (_diagnosis.Attempts > 1 ? Say($" (corregido en {_diagnosis.Attempts} intentos)", $" (fixed in {_diagnosis.Attempts} attempts)") : "");
                     break;
                 case "compute_report":
                     Require(_diagnosis is not null, "Ejecuta diagnose_distresses primero.");
@@ -170,7 +187,9 @@ internal sealed class InspectionToolSession(
                     if (_concepts.Length < options.SegmentationConcepts.Count) Warn("La búsqueda visual no incluyó todos los tipos de deterioro habilitados.");
                     _computed = true; _verified = false; _mobilityDone = false;
                     await SaveProgressAsync(cancellationToken);
-                    result = Ok(new { pci, quantities = _distresses.Select(d => new { d.Code, d.Quantities }), budget = profile.PricesAvailable ? costs.Estimate(Draft()) : null });
+                    var budget = profile.PricesAvailable ? costs.Estimate(Draft()) : null;
+                    result = Ok(new { pci, quantities = _distresses.Select(d => new { d.Code, d.Quantities }), budget });
+                    _summary = $"PCI {pci.Pci:0}" + (budget is null ? "" : Say($" · presupuesto {budget.Currency} {budget.Total:N0}", $" · budget {budget.Currency} {budget.Total:N0}"));
                     break;
                 case "assess_mobility":
                     Require(_computed && _cityAssessed, "Calcula el informe y ejecuta load_city_network antes de evaluar movilidad.");
@@ -181,11 +200,13 @@ internal sealed class InspectionToolSession(
                         _mobilityJson = Serialize(plan); model = plan.Model;
                         Warn("Movilidad calculada sobre la red y demanda sintéticas de Puno; no representa aforos reales.");
                         result = Ok(new { plan.Engine, plan.Model, plan.Summary, plan.Simulation.UserCostPen, plan.Simulation.RecommendedPeriod, routes = plan.Routes.Count, dataSource = "PunoDemoNetwork: synthetic geometry and demand" });
+                        _summary = Say($"Desvío por {plan.Routes.Count} rutas · mejor franja: {PeriodLabel(plan.Simulation.RecommendedPeriod)}", $"Detour over {plan.Routes.Count} routes · best window: {PeriodLabel(plan.Simulation.RecommendedPeriod)}");
                     }
                     else
                     {
                         Warn("No hay red y demanda validadas asignadas a esta inspección. El mapa geográfico permite explorar cierres sin afirmar congestión real.");
                         result = Ok(new { status = "NeedsInput", networkId = _cityNetwork?.Id, required = "Seleccionar una calle y aportar demanda de tráfico local para cuantificar congestión." });
+                        _summary = Say("Sin tramo ni demanda asignados: no se planificó el desvío", "No road segment or demand assigned: no detour planned");
                     }
                     _mobilityDone = true; _verified = false;
                     break;
@@ -197,19 +218,24 @@ internal sealed class InspectionToolSession(
                     {
                         language = inspection.Language.ToString(), profile = new { profile.Name, profile.Version, profile.JurisdictionValidated, profile.Sources },
                         findings = _diagnosis!.Findings, measurements = _measured.Select(m => new { m.Segment.Index, m.Measurement }),
-                        pci = _pci, surveyedAreaM2 = _area, budget = profile.PricesAvailable ? costs.Estimate(Draft()) : null, warnings = Warnings,
+                        pci = _pci, surveyedAreaM2 = _area, budget = profile.PricesAvailable ? costs.Estimate(Draft()) : null, assumptionsAlreadyShown = Warnings,
                         mobility = _mobilityJson is null ? (JsonElement?)null : JsonSerializer.Deserialize<JsonElement>(_mobilityJson)
                     }), cancellationToken);
-                    foreach (var issue in audit.Issues) Warn(issue);
+                    // The assumptions above are always shown apart; only what the reviewer adds decides NeedsReview.
+                    _reviewIssues = audit.Issues.Where(i => !_warnings.Exists(w => w.Text == i)).Distinct().ToArray();
                     model = audit.Model;
-                    _reviewStatus = _warnings.Count > 0 || audit.Status != "Ready" ? "NeedsReview" : "Ready";
+                    _reviewStatus = _reviewIssues.Length > 0 || audit.Status != "Ready" ? "NeedsReview" : "Ready";
                     _verified = true;
-                    result = Ok(new { status = _reviewStatus, issues = Warnings, numericChecks = "Passed: geometry, coverage, quantities and PCI are computed and range checked by code." });
+                    result = Ok(new { status = _reviewStatus, issues = _reviewIssues, numericChecks = "Passed: geometry, coverage, quantities and PCI are computed and range checked by code." });
+                    _summary = _reviewIssues.Length == 0
+                        ? Say("Cifras comprobadas por código; el revisor no encontró observaciones", "Figures checked by code; the reviewer found no issues")
+                        : Say($"Cifras comprobadas por código · {_reviewIssues.Length} observaciones del revisor", $"Figures checked by code · {_reviewIssues.Length} reviewer issues");
                     break;
                 case "finish":
                     Require(_verified, "Ejecuta verify_report antes de terminar.");
                     _finished = true;
                     result = Ok(new { status = _reviewStatus });
+                    _summary = Say("Informe cerrado", "Report closed");
                     break;
                 default:
                     result = new(false, "Herramienta no permitida.");
@@ -220,7 +246,8 @@ internal sealed class InspectionToolSession(
         {
             result = new(false, ex.Message.Length > 1500 ? ex.Message[..1500] : ex.Message);
         }
-        _actions.Add(new AgentActionTrace(agent, name, model, result.Success ? "Succeeded" : "Rejected", timer.ElapsedMilliseconds, result.Evidence));
+        _actions.Add(new AgentActionTrace(agent, name, model, result.Success ? "Succeeded" : "Rejected", timer.ElapsedMilliseconds, result.Evidence,
+            result.Success ? _summary : result.Evidence, (ModelUsageMeter.Current?.Tokens ?? 0) - tokensBefore));
         await SaveProgressAsync(cancellationToken);
         return result;
     }
@@ -248,7 +275,11 @@ internal sealed class InspectionToolSession(
         _concepts.Select(c => new ConceptTrace(c, _segmentation?.Segments.Count(s => s.Concept.Equals(c, StringComparison.OrdinalIgnoreCase)) ?? 0)).ToArray(),
         _segmentationMs, _reasoningMs, _diagnosis?.Attempts ?? 1, (_segmentation?.Segments.Count ?? 0) - _measured.Count,
         new AgentRunTrace(_runId, coordinator.Engine, coordinator.Model, status, RegionalCatalog.Snapshot(profile), _selection?.Latitude, _selection?.Longitude,
-            _actions.ToArray(), Warnings, usage?.Calls ?? 0, usage?.InputTokens ?? 0, usage?.OutputTokens ?? 0, _mobilityJson));
+            _actions.ToArray(), Warnings,
+            ModelUsageMeter.Current is { Calls: > 0 } meter ? meter.Calls : usage?.Calls ?? 0,
+            ModelUsageMeter.Current is { Calls: > 0 } m1 ? m1.InputTokens : usage?.InputTokens ?? 0,
+            ModelUsageMeter.Current is { Calls: > 0 } m2 ? m2.OutputTokens : usage?.OutputTokens ?? 0,
+            _mobilityJson, _verified ? _reviewIssues : null));
 
     private async Task SaveProgressAsync(CancellationToken cancellationToken)
     {
@@ -263,6 +294,31 @@ internal sealed class InspectionToolSession(
         Require(diagnosis.Findings.Select(f => f.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count() == diagnosis.Findings.Count, "El diagnóstico contiene códigos repetidos.");
         Require(diagnosis.Steps.All(s => s.TargetSegmentIndex is null || expected.Contains(s.TargetSegmentIndex.Value)), "Un paso apunta a un segmento desconocido.");
     }
+    private string Say(string es, string en) => inspection.Language == ReportLanguage.En ? en : es;
+
+    private string PeriodLabel(WorkPeriod period) => period switch
+    {
+        WorkPeriod.Night => Say("noche (22–05 h)", "night (22–05 h)"),
+        WorkPeriod.OffPeak => Say("valle (09–17 h)", "off-peak (09–17 h)"),
+        _ => Say("hora punta", "peak hour")
+    };
+
+    private string TypeLabel(DistressType type, bool plural) => (type, inspection.Language == ReportLanguage.En) switch
+    {
+        (DistressType.Pothole, false) => plural ? "baches" : "bache",
+        (DistressType.Pothole, true) => plural ? "potholes" : "pothole",
+        (DistressType.AlligatorCrack, false) => plural ? "zonas de piel de cocodrilo" : "zona de piel de cocodrilo",
+        (DistressType.AlligatorCrack, true) => plural ? "alligator-cracked areas" : "alligator-cracked area",
+        (DistressType.LongitudinalCrack, false) => plural ? "fisuras longitudinales" : "fisura longitudinal",
+        (DistressType.LongitudinalCrack, true) => plural ? "longitudinal cracks" : "longitudinal crack",
+        (DistressType.TransverseCrack, false) => plural ? "fisuras transversales" : "fisura transversal",
+        (DistressType.TransverseCrack, true) => plural ? "transverse cracks" : "transverse crack",
+        (DistressType.Rutting, false) => "ahuellamiento",
+        (DistressType.Rutting, true) => "rutting",
+        (_, false) => plural ? "otros deterioros" : "otro deterioro",
+        _ => plural ? "other distresses" : "other distress"
+    };
+
     private void Advance(AnalysisStage stage) { if (inspection.Stage is null || inspection.Stage < stage) inspection.AdvanceTo(stage); }
     private string[] Warnings => _warnings.Select(w => w.Text).ToArray();
     private void Warn(string warning) { if (!_warnings.Exists(w => w.Text == warning)) _warnings.Add((_tool, warning)); }

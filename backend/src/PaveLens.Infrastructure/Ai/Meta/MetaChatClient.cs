@@ -106,8 +106,11 @@ internal sealed class MetaChatClient(HttpClient http, IOptions<AiOptions> option
 
         try
         {
-            var body = await response.Content.ReadFromJsonAsync<JsonObject>(Json, cancellationToken);
-            return body ?? throw new ModelOutputException("El modelo devolvió una respuesta vacía.");
+            var body = await response.Content.ReadFromJsonAsync<JsonObject>(Json, cancellationToken)
+                ?? throw new ModelOutputException("El modelo devolvió una respuesta vacía.");
+            ModelUsageMeter.Current?.Record(
+                body["usage"]?["prompt_tokens"]?.GetValue<long>() ?? 0, body["usage"]?["completion_tokens"]?.GetValue<long>() ?? 0);
+            return body;
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException)
         {
