@@ -36,6 +36,38 @@ public class PolygonMetricsTests
         Assert.Equal(0, PolygonMetrics.Compute(Rectangle(3, 3)).Eccentricity, 9);
     }
 
+    private static GroundPoint[] Square(double x, double y, double size) =>
+        [new(x, y), new(x + size, y), new(x + size, y + size), new(x, y + size)];
+
+    [Fact]
+    public void HolesAreSubtractedWhateverTheirWinding()
+    {
+        // 10 × 10 square with a centred 4 × 4 hole, once with each winding.
+        var sameWinding = PolygonMetrics.Compute(Square(0, 0, 10), [Square(3, 3, 4)]);
+        var reversed = PolygonMetrics.Compute(Square(0, 0, 10), [Square(3, 3, 4).Reverse().ToArray()]);
+
+        foreach (var shape in new[] { sameWinding, reversed })
+        {
+            Assert.Equal(84, shape.Area, 9);
+            Assert.Equal(56, shape.Perimeter, 9);
+            Assert.Equal(5, shape.Centroid.X, 9);
+            Assert.Equal(5, shape.Centroid.Y, 9);
+            // (10⁴ − 4⁴) / 12 / 84: the hole removes inertia too.
+            Assert.Equal(812.0 / 84, shape.Mu20, 9);
+            Assert.Equal(0, shape.Eccentricity, 9);
+            Assert.Equal(10, shape.Length, 9);
+        }
+    }
+
+    [Fact]
+    public void AnOffCentreHoleShiftsTheCentroid()
+    {
+        var shape = PolygonMetrics.Compute(Square(0, 0, 10), [Square(0.5, 0.5, 2)]);
+
+        Assert.Equal(96, shape.Area, 9);
+        Assert.Equal((100 * 5 - 4 * 1.5) / 96, shape.Centroid.X, 9);
+    }
+
     [Fact]
     public void OrientationFollowsTheMajorAxis()
     {

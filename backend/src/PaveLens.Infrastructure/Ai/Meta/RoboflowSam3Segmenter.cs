@@ -66,7 +66,7 @@ internal sealed class RoboflowSam3Segmenter(HttpClient http, IOptions<AiOptions>
         }
 
         var segments = Sam3Instances.Deduplicate(instances)
-            .Select((s, i) => new Segment(i, s.Concept, s.Score, s.Polygon))
+            .Select((s, i) => new Segment(i, s.Concept, s.Score, s.Polygon, s.Holes))
             .ToList();
         return new SegmentationResult(_endpoint.Model, segments);
     }
@@ -75,7 +75,7 @@ internal sealed class RoboflowSam3Segmenter(HttpClient http, IOptions<AiOptions>
 /// <summary>Parsing and clean-up of SAM 3 concept-segmentation output. Pure, so it is unit-tested directly.</summary>
 internal static class Sam3Instances
 {
-    internal sealed record Instance(string Concept, double Score, NormalizedPoint[] Polygon);
+    internal sealed record Instance(string Concept, double Score, NormalizedPoint[] Polygon, NormalizedPoint[][]? Holes = null);
 
     /// <summary>Parts smaller than this many square pixels are speckle, not distresses.</summary>
     internal const double MinAreaPx = 16;
@@ -104,24 +104,12 @@ internal static class Sam3Instances
                 var score = Math.Clamp(prediction?["confidence"]?.GetValue<double>() ?? 0, 0, 1);
                 var polygons = ReadPolygons(prediction?["masks"]);
 
-                // A prediction may hold several rings: separate parts and holes. Keep every ring not inside a larger one.
-                var rings = polygons
-                    .Where(r => r.Length >= 3 && Math.Abs(SignedArea(r)) >= MinAreaPx)
-                    .OrderByDescending(r => Math.Abs(SignedArea(r)))
-                    .ToList();
-                var outer = new List<(double X, double Y)[]>();
-                foreach (var ring in rings)
+                // A prediction may hold several rings: separate parts, and holes whose area is subtracted when measured.
+                var rings = polygons.Where(r => r.Length >= 3 && Math.Abs(SignedArea(r)) >= MinAreaPx);
+                foreach (var (outer, holes) in Nest(rings))
                 {
-                    if (!outer.Any(o => Contains(o, ring[0].X, ring[0].Y)))
-                    {
-                        outer.Add(ring);
-                    }
-                }
-
-                foreach (var ring in outer)
-                {
-                    var normalized = ring.Select(v => new NormalizedPoint(Normalize(v.X, width), Normalize(v.Y, height))).ToArray();
-                    yield return new Instance(concept, score, normalized);
+                    yield return new Instance(concept, score, NormalizeRing(outer, width, height),
+                        holes.Count > 0 ? holes.Select(h => NormalizeRing(h, width, height)).ToArray() : null);
                 }
             }
         }
@@ -132,9 +120,37 @@ internal static class Sam3Instances
     /// Keeps the higher-scoring mask when two masks of different concepts have IoU above <see cref="DuplicateIou"/>.
     /// Containment alone is not a duplicate: a pothole inside an alligator-cracked area is two distresses.
     /// </summary>
+    /// <summary>
+    /// Groups the pixel rings of one mask by nesting depth, largest first: a ring inside an even number of others is
+    /// an outline, inside an odd number it is a hole of its innermost container. An island inside a hole is a new part.
+    /// </summary>
+    public static List<((double X, double Y)[] Outer, List<(double X, double Y)[]> Holes)> Nest(IEnumerable<(double X, double Y)[]> rings)
+    {
+        var parts = new List<((double X, double Y)[] Outer, List<(double X, double Y)[]> Holes)>();
+        var placed = new List<((double X, double Y)[] Ring, int Depth, int Part)>();
+        foreach (var ring in rings.OrderByDescending(r => Math.Abs(SignedArea(r))))
+        {
+            // Placed rings are larger, so the last one containing this ring is its innermost container.
+            var parent = placed.FindLastIndex(p => Contains(p.Ring, ring[0].X, ring[0].Y));
+            var depth = parent < 0 ? 0 : placed[parent].Depth + 1;
+            if (depth % 2 == 0)
+            {
+                parts.Add((ring, []));
+                placed.Add((ring, depth, parts.Count - 1));
+            }
+            else
+            {
+                parts[placed[parent].Part].Holes.Add(ring);
+                placed.Add((ring, depth, placed[parent].Part));
+            }
+        }
+
+        return parts;
+    }
+
     public static IReadOnlyList<Instance> Deduplicate(IReadOnlyList<Instance> instances)
     {
-        var masks = instances.Select(i => Raster.Of(i.Polygon)).ToArray();
+        var masks = instances.Select(i => Raster.Of(i.Polygon, i.Holes)).ToArray();
         var kept = new List<int>();
         foreach (var i in Enumerable.Range(0, instances.Count).OrderByDescending(i => instances[i].Score))
         {
@@ -194,6 +210,9 @@ internal static class Sam3Instances
         return ring;
     }
 
+    private static NormalizedPoint[] NormalizeRing((double X, double Y)[] ring, int width, int height) =>
+        ring.Select(v => new NormalizedPoint(Normalize(v.X, width), Normalize(v.Y, height))).ToArray();
+
     // Polygon vertices are pixel coordinates along pixel edges, so dividing by the size maps them onto [0, 1].
     private static double Normalize(double value, int size)
     {
@@ -234,20 +253,25 @@ internal static class Sam3Instances
     {
         private const int Size = 256;
 
-        public static bool[] Of(NormalizedPoint[] polygon)
+        // Even-odd fill over the outline and its holes, so a hole is left empty.
+        public static bool[] Of(NormalizedPoint[] polygon, NormalizedPoint[][]? holes)
         {
             var cells = new bool[Size * Size];
             var xs = new List<double>();
+            NormalizedPoint[][] rings = [polygon, .. holes ?? []];
             for (var row = 0; row < Size; row++)
             {
                 var y = (row + 0.5) / Size;
                 xs.Clear();
-                for (int i = 0, j = polygon.Length - 1; i < polygon.Length; j = i++)
+                foreach (var ring in rings)
                 {
-                    var (a, b) = (polygon[i], polygon[j]);
-                    if ((a.Y > y) != (b.Y > y))
+                    for (int i = 0, j = ring.Length - 1; i < ring.Length; j = i++)
                     {
-                        xs.Add(a.X + ((y - a.Y) * (b.X - a.X) / (b.Y - a.Y)));
+                        var (a, b) = (ring[i], ring[j]);
+                        if ((a.Y > y) != (b.Y > y))
+                        {
+                            xs.Add(a.X + ((y - a.Y) * (b.X - a.X) / (b.Y - a.Y)));
+                        }
                     }
                 }
 

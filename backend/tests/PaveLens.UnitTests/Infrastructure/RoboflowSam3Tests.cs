@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using PaveLens.Application.Abstractions;
 using PaveLens.Application.Common;
+using PaveLens.Domain.Inspections;
 using PaveLens.Infrastructure.Ai;
 using PaveLens.Infrastructure.Ai.Meta;
 using Microsoft.Extensions.Options;
@@ -38,7 +39,7 @@ public class RoboflowSam3Tests
     }
 
     [Fact]
-    public void SplitsSeparatePartsAndDropsHolesAndSpeckle()
+    public void SplitsSeparatePartsKeepsHolesAndDropsSpeckle()
     {
         var body = JsonNode.Parse($$"""
             { "prompt_results": [ { "predictions": [ { "confidence": 0.8, "masks": [
@@ -51,9 +52,38 @@ public class RoboflowSam3Tests
 
         var parts = Sam3Instances.Parse(body, ["alligator crack"], W, H).ToList();
 
-        // Outer 200 px square, separate 100 px square; the hole and the 3 × 3 speck are dropped.
+        // Outer 200 px square carrying its hole, separate 100 px square; the 3 × 3 speck is dropped.
         Assert.Equal(2, parts.Count);
         Assert.All(parts, p => Assert.Equal("alligator crack", p.Concept));
+        var hole = Assert.Single(parts[0].Holes!);
+        Assert.Equal(0.05, hole[0].X, 9);
+        Assert.Null(parts[1].Holes);
+    }
+
+    [Fact]
+    public void AnIslandInsideAHoleIsASeparatePart()
+    {
+        var parts = Sam3Instances.Nest([
+            [(0, 0), (100, 0), (100, 100), (0, 100)],
+            [(20, 20), (80, 20), (80, 80), (20, 80)],
+            [(40, 40), (60, 40), (60, 60), (40, 60)]
+        ]);
+
+        Assert.Equal(2, parts.Count);
+        Assert.Single(parts[0].Holes);
+        Assert.Empty(parts[1].Holes);
+        Assert.Equal(40, parts[1].Outer[0].X);
+    }
+
+    [Fact]
+    public void DeduplicationComparesNetAreas()
+    {
+        // A ring of alligator cracking around intact pavement does not duplicate a pothole filling the gap.
+        NormalizedPoint[] Sq(double x, double s) => [new(x, x), new(x + s, x), new(x + s, x + s), new(x, x + s)];
+        var ring = new Sam3Instances.Instance("alligator crack", 0.9, Sq(0.1, 0.4), [Sq(0.15, 0.3)]);
+        var filled = new Sam3Instances.Instance("pothole", 0.8, Sq(0.1, 0.4));
+
+        Assert.Equal(2, Sam3Instances.Deduplicate([ring, filled]).Count);
     }
 
     [Fact]

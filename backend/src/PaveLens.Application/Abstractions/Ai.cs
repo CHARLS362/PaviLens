@@ -10,8 +10,12 @@ public sealed record ImagePayload(ReadOnlyMemory<byte> Bytes, string ContentType
 
 public sealed record SegmentationRequest(ImagePayload Image, IReadOnlyList<string> Concepts);
 
-/// <summary>One mask returned by the segmentation model, outline in normalized coordinates.</summary>
-public sealed record Segment(int Index, string Concept, double Score, IReadOnlyList<NormalizedPoint> Polygon);
+/// <summary>
+/// One mask returned by the segmentation model, outline in normalized coordinates. <paramref name="Holes"/> are
+/// interior rings (intact pavement inside the distress); their area is subtracted when the mask is measured.
+/// </summary>
+public sealed record Segment(int Index, string Concept, double Score, IReadOnlyList<NormalizedPoint> Polygon,
+    IReadOnlyList<IReadOnlyList<NormalizedPoint>>? Holes = null);
 
 public sealed record SegmentationResult(string Model, IReadOnlyList<Segment> Segments);
 

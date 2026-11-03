@@ -121,7 +121,7 @@ internal sealed class InspectionToolSession(
                     var projection = GroundProjection.Create(inspection.ReferenceWidthM, inspection.Calibration, (double)image.Height / image.Width);
                     _measured.Clear();
                     foreach (var s in _segmentation!.Segments.Where(s => projection.Covers(s.Polygon)))
-                        _measured.Add(new MeasuredSegment(s with { Polygon = PolygonSimplifier.Simplify(s.Polygon, options.MaskSimplificationTolerance) }, PolygonMetrics.Measure(s.Polygon, projection)));
+                        _measured.Add(new MeasuredSegment(s with { Polygon = PolygonSimplifier.Simplify(s.Polygon, options.MaskSimplificationTolerance) }, PolygonMetrics.Measure(s.Polygon, projection, s.Holes)));
                     Require(_measured.Count > 0, "Todos los deterioros quedan sobre el horizonte de la calibración.");
                     _area = projection.SurveyedAreaM2;
                     _diagnosis = null; _computed = false; _verified = false; _mobilityDone = false;

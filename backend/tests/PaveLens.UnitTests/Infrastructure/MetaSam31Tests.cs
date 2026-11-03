@@ -28,18 +28,22 @@ public class MetaSam31Tests
     }
 
     [Fact]
-    public async Task RejectsHolesRatherThanInflatingMeasuredArea()
+    public async Task KeepsHolesSoTheirAreaIsSubtracted()
     {
         using var handler = new SamHandler();
         using var http = new HttpClient(handler) { BaseAddress = new Uri("https://example.test/") };
         var segmenter = new MetaSam31Segmenter(http, Options.Create(new AiOptions()), new Decoder { Holes = true });
-        await Assert.ThrowsAsync<ModelOutputException>(() => segmenter.SegmentAsync(new SegmentationRequest(new ImagePayload(ReadOnlyMemory<byte>.Empty, "image/jpeg", 100, 100, "test"), ["pothole"]), TestContext.Current.CancellationToken));
+        var result = await segmenter.SegmentAsync(new SegmentationRequest(new ImagePayload(ReadOnlyMemory<byte>.Empty, "image/jpeg", 100, 100, "test"), ["alligator crack"]), TestContext.Current.CancellationToken);
+        var segment = Assert.Single(result.Segments);
+        var hole = Assert.Single(segment.Holes!);
+        Assert.Equal(0.15, hole[0].X, 9);
     }
 
     private sealed class Decoder : ISam31Decoder
     {
         public bool Holes { get; init; }
-        public Task<Sam31Geometry> DecodeAsync(string response, CancellationToken cancellationToken) => Task.FromResult(new Sam31Geometry([new(.9, [[[10,20],[30,20],[30,40],[10,40]]], Holes)]));
+        public Task<Sam31Geometry> DecodeAsync(string response, CancellationToken cancellationToken) => Task.FromResult(new Sam31Geometry([new(.9,
+            Holes ? [[[10,20],[30,20],[30,40],[10,40]], [[15,25],[25,25],[25,35],[15,35]]] : [[[10,20],[30,20],[30,40],[10,40]]], Holes)]));
     }
     private sealed class SamHandler : HttpMessageHandler
     {

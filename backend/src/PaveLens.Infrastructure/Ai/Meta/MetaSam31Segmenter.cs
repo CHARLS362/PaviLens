@@ -78,17 +78,21 @@ internal sealed class MetaSam31Segmenter(HttpClient http, IOptions<AiOptions> op
             {
                 if (!double.IsFinite(item.Confidence) || item.Confidence is < 0 or > 1) throw new ModelOutputException("Confianza SAM inválida.");
                 if (item.Confidence < _meta.SegmentationScoreThreshold) continue;
-                if (item.Holes) throw new ModelOutputException("La máscara SAM contiene huecos: requiere revisión antes de medirla con el modelo de polígono actual.");
-                foreach (var ring in item.Rings.Where(r => r.Length >= 3))
+                var rings = item.Rings.Where(r => r.Length >= 3).ToArray();
+                if (rings.Any(ring => ring.Any(p => p.Length != 2 || !double.IsFinite(p[0]) || !double.IsFinite(p[1]) || p[0] < 0 || p[1] < 0 || p[0] > request.Image.Width || p[1] > request.Image.Height)))
+                    throw new ModelOutputException("SAM devolvió una máscara fuera de las dimensiones de la imagen.");
+                // Holes are subtracted from the measured area, as with Roboflow.
+                foreach (var (outer, holes) in Sam3Instances.Nest(rings.Select(r => r.Select(p => (p[0], p[1])).ToArray())))
                 {
-                    if (ring.Any(p => p.Length != 2 || !double.IsFinite(p[0]) || !double.IsFinite(p[1]) || p[0] < 0 || p[1] < 0 || p[0] > request.Image.Width || p[1] > request.Image.Height))
-                        throw new ModelOutputException("SAM devolvió una máscara fuera de las dimensiones de la imagen.");
-                    var polygon = ring.Select(p => new NormalizedPoint(p[0] / request.Image.Width, p[1] / request.Image.Height)).ToArray();
-                    instances.Add(new Sam3Instances.Instance(concept, item.Confidence, polygon));
+                    instances.Add(new Sam3Instances.Instance(concept, item.Confidence, Normalize(outer, request.Image),
+                        holes.Count > 0 ? holes.Select(h => Normalize(h, request.Image)).ToArray() : null));
                 }
             }
         }
-        var segments = Sam3Instances.Deduplicate(instances).Select((s, i) => new Segment(i, s.Concept, s.Score, s.Polygon)).ToArray();
+        var segments = Sam3Instances.Deduplicate(instances).Select((s, i) => new Segment(i, s.Concept, s.Score, s.Polygon, s.Holes)).ToArray();
         return new SegmentationResult(_meta.Sam31.Model, segments);
     }
+
+    private static NormalizedPoint[] Normalize((double X, double Y)[] ring, ImagePayload image) =>
+        ring.Select(p => new NormalizedPoint(p.X / image.Width, p.Y / image.Height)).ToArray();
 }
