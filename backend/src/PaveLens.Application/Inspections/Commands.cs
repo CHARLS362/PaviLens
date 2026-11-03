@@ -88,9 +88,14 @@ public sealed class AnalysisOptions
 
     /// <summary>Text concepts used to prompt the segmentation model.</summary>
     [MinLength(1)]
+    /// <summary>
+    /// Visual noun phrases sent to SAM. SAM matches plain words, not engineering terms: on real photos
+    /// "alligator crack" and "transverse crack" return nothing while "crack" and "cracked asphalt" find them.
+    /// The diagnostic model assigns the ASTM type afterwards.
+    /// </summary>
     public List<string> SegmentationConcepts { get; set; } =
     [
-        "pothole", "alligator crack", "longitudinal crack", "transverse crack", "rutting"
+        "pothole", "crack", "cracked asphalt", "rutting"
     ];
 
     /// <summary>Previous turns sent to the assistant as conversation memory.</summary>

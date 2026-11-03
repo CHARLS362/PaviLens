@@ -39,11 +39,24 @@ public class MetaSam31Tests
         Assert.Equal(0.15, hole[0].X, 9);
     }
 
+    [Fact]
+    public async Task DropsSpecksOfAFewPixels()
+    {
+        using var handler = new SamHandler();
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://example.test/") };
+        var segmenter = new MetaSam31Segmenter(http, Options.Create(new AiOptions()), new Decoder { Speck = true });
+        var result = await segmenter.SegmentAsync(new SegmentationRequest(new ImagePayload(ReadOnlyMemory<byte>.Empty, "image/jpeg", 100, 100, "test"), ["crack"]), TestContext.Current.CancellationToken);
+        Assert.Single(result.Segments);
+    }
+
     private sealed class Decoder : ISam31Decoder
     {
         public bool Holes { get; init; }
+        public bool Speck { get; init; }
         public Task<Sam31Geometry> DecodeAsync(string response, CancellationToken cancellationToken) => Task.FromResult(new Sam31Geometry([new(.9,
-            Holes ? [[[10,20],[30,20],[30,40],[10,40]], [[15,25],[25,25],[25,35],[15,35]]] : [[[10,20],[30,20],[30,40],[10,40]]], Holes)]));
+            Holes ? [[[10,20],[30,20],[30,40],[10,40]], [[15,25],[25,25],[25,35],[15,35]]]
+            : Speck ? [[[10,20],[30,20],[30,40],[10,40]], [[50,50],[52,50],[52,52],[50,52]]]
+            : [[[10,20],[30,20],[30,40],[10,40]]], Holes)]));
     }
     private sealed class SamHandler : HttpMessageHandler
     {

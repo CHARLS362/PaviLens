@@ -1,6 +1,6 @@
 {
   "sha256": "*",
-  "summary": "[Simulación] Esta imagen no pertenece al catálogo de demostración: los deterioros mostrados son un ejemplo fijo y no corresponden a la foto. Configura Ai:Provider = Meta para analizarla con SAM 3 y Muse Wonder.",
+  "summary": "[Simulación] Esta imagen no pertenece al catálogo de demostración: los deterioros mostrados son un ejemplo fijo y no corresponden a la foto. Pon tu META_API_KEY en el archivo .env y reinicia la API para analizarla con SAM 3.1 y Muse.",
   "distresses": [
     {
       "concept": "pothole",
@@ -13,7 +13,7 @@
       "recommendedAction": "Ejemplo: bacheo profundo con corte rectangular y mezcla en caliente."
     },
     {
-      "concept": "longitudinal crack",
+      "concept": "crack",
       "score": 0.86,
       "polygon": [[0.20, 0.20], [0.215, 0.20], [0.235, 0.50], [0.25, 0.85], [0.235, 0.85], [0.22, 0.50]],
       "code": "F1",
@@ -40,7 +40,7 @@
     }
   ],
   "en": {
-    "summary": "[Simulation] This image is not in the demo catalogue: the distresses shown are a fixed example and do not match the photo. Set Ai:Provider = Meta to analyse it with SAM 3 and Muse Wonder.",
+    "summary": "[Simulation] This image is not in the demo catalogue: the distresses shown are a fixed example and do not match the photo. Put your META_API_KEY in the .env file and restart the API to analyse it with SAM 3.1 and Muse.",
     "distresses": {
       "B1": {
         "diagnosis": "Example: pothole with vertical edges and loose material at the bottom.",

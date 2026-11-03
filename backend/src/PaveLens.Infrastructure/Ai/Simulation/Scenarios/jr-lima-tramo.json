@@ -793,7 +793,7 @@
       "recommendedAction": "Bacheo superficial con corte rectangular y mezcla en caliente."
     },
     {
-      "concept": "alligator crack",
+      "concept": "cracked asphalt",
       "score": 0.91,
       "polygon": [
         [
@@ -1188,7 +1188,7 @@
       "recommendedAction": "Bacheo profundo del área fisurada; revisar drenaje y capacidad de la base."
     },
     {
-      "concept": "longitudinal crack",
+      "concept": "crack",
       "score": 0.88,
       "polygon": [
         [
@@ -1927,7 +1927,7 @@
       "recommendedAction": "Limpieza con aire comprimido y sellado con emulsión asfáltica."
     },
     {
-      "concept": "transverse crack",
+      "concept": "crack",
       "score": 0.9,
       "polygon": [
         [

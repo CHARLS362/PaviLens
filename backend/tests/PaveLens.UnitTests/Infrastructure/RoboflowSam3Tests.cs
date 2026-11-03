@@ -135,6 +135,16 @@ public class RoboflowSam3Tests
     }
 
     [Fact]
+    public void DropsAMaskThatCoversMostOfTheFrame()
+    {
+        // On a worn street SAM marks the whole road as "cracked asphalt" (88 % of a real photo).
+        var surface = Instance("cracked asphalt", 0.9, 0, 0.05, 0.95);
+        var pothole = Instance("pothole", 0.6, 0.3, 0.3, 0.1);
+
+        Assert.Equal(["pothole"], Sam3Instances.Deduplicate([surface, pothole]).Select(k => k.Concept));
+    }
+
+    [Fact]
     public async Task SendsOneTextPromptPerConceptWithBearerKey()
     {
         var handler = new CapturingHandler("""

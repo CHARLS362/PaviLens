@@ -83,6 +83,12 @@ internal static class Sam3Instances
     /// <summary>Two masks of different concepts overlapping more than this are the same object labelled twice.</summary>
     internal const double DuplicateIou = 0.7;
 
+    /// <summary>
+    /// A mask covering more of the frame than this is the pavement itself ("cracked asphalt" on a worn street), not one
+    /// distress: it would count every pothole and crack inside it twice. Those are segmented on their own.
+    /// </summary>
+    internal const double MaxFrameFraction = 0.6;
+
     public static IEnumerable<Instance> Parse(JsonNode? body, IReadOnlyList<string> concepts, int width, int height)
     {
         if (body?["prompt_results"] is not JsonArray results)
@@ -116,11 +122,6 @@ internal static class Sam3Instances
     }
 
     /// <summary>
-    /// SAM 3 answers each prompt independently, so one pothole can come back as "pothole" and as "alligator crack".
-    /// Keeps the higher-scoring mask when two masks of different concepts have IoU above <see cref="DuplicateIou"/>.
-    /// Containment alone is not a duplicate: a pothole inside an alligator-cracked area is two distresses.
-    /// </summary>
-    /// <summary>
     /// Groups the pixel rings of one mask by nesting depth, largest first: a ring inside an even number of others is
     /// an outline, inside an odd number it is a hole of its innermost container. An island inside a hole is a new part.
     /// </summary>
@@ -148,8 +149,15 @@ internal static class Sam3Instances
         return parts;
     }
 
+    /// <summary>
+    /// SAM 3 answers each prompt independently, so one pothole can come back as "pothole" and as "cracked asphalt".
+    /// Drops whole-surface masks (<see cref="MaxFrameFraction"/>), then keeps the higher-scoring mask when two masks of
+    /// different concepts have IoU above <see cref="DuplicateIou"/>.
+    /// Containment alone is not a duplicate: a pothole inside an alligator-cracked area is two distresses.
+    /// </summary>
     public static IReadOnlyList<Instance> Deduplicate(IReadOnlyList<Instance> instances)
     {
+        instances = instances.Where(i => NetArea(i) <= MaxFrameFraction).ToList();
         var masks = instances.Select(i => Raster.Of(i.Polygon, i.Holes)).ToArray();
         var kept = new List<int>();
         foreach (var i in Enumerable.Range(0, instances.Count).OrderByDescending(i => instances[i].Score))
@@ -222,7 +230,14 @@ internal static class Sam3Instances
             : throw new ModelOutputException($"Coordenada de máscara fuera de la imagen: {value} de {size} px.");
     }
 
-    private static double SignedArea((double X, double Y)[] ring)
+    /// <summary>Area in normalized image units (1 = the whole frame), holes subtracted.</summary>
+    internal static double NetArea(Instance instance)
+    {
+        static double Area(NormalizedPoint[] ring) => Math.Abs(SignedArea(ring.Select(p => (p.X, p.Y)).ToArray()));
+        return Area(instance.Polygon) - (instance.Holes?.Sum(Area) ?? 0);
+    }
+
+    internal static double SignedArea((double X, double Y)[] ring)
     {
         var sum = 0.0;
         for (int i = 0, j = ring.Length - 1; i < ring.Length; j = i++)

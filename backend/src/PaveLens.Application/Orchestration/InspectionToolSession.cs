@@ -96,11 +96,9 @@ internal sealed class InspectionToolSession(
                     break;
                 case "segment_image":
                     Require(_regionLoaded, "Ejecuta load_region antes de segmentar.");
-                    var requestedConcepts = arguments.TryGetProperty("concepts", out var concepts)
-                        ? concepts.EnumerateArray().Select(c => c.GetString() ?? "").Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
-                        : options.SegmentationConcepts.ToArray();
-                    Require(requestedConcepts.Length is > 0 and <= 8 && requestedConcepts.All(c => options.SegmentationConcepts.Contains(c, StringComparer.OrdinalIgnoreCase)), "Usa únicamente conceptos de deterioro habilitados en Analysis:SegmentationConcepts.");
-                    _concepts = requestedConcepts;
+                    // Always every enabled concept: a coordinator that narrows the search silently misses distress types.
+                    // A legacy "concepts" argument is accepted and ignored.
+                    _concepts = options.SegmentationConcepts.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
                     ResetWarningsFrom(name);
                     _measured.Clear(); _diagnosis = null; _computed = false; _verified = false; _mobilityDone = false;
                     _segmentation = null;

@@ -3,7 +3,7 @@
   "summary": "[Simulación] Escena sintética de demostración. Piel de cocodrilo severa con bombeo de finos, una fisura transversal térmica y un bache incipiente. Indica falla estructural de la base: no basta con sellar.",
   "distresses": [
     {
-      "concept": "alligator crack",
+      "concept": "cracked asphalt",
       "score": 0.94,
       "polygon": [
         [
@@ -398,7 +398,7 @@
       "recommendedAction": "Reconstrucción localizada de carpeta y base; corregir el drenaje lateral."
     },
     {
-      "concept": "transverse crack",
+      "concept": "crack",
       "score": 0.89,
       "polygon": [
         [

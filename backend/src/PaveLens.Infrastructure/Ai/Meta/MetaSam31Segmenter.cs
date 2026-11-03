@@ -53,45 +53,51 @@ internal sealed class MetaSam31Segmenter(HttpClient http, IOptions<AiOptions> op
 
     public async Task<SegmentationResult> SegmentAsync(SegmentationRequest request, CancellationToken cancellationToken)
     {
+        // One Responses request per concept, sent together; results keep the concept order.
+        var perConcept = await Task.WhenAll(request.Concepts.Select(concept => SegmentConceptAsync(request, concept, cancellationToken)));
+        var segments = Sam3Instances.Deduplicate(perConcept.SelectMany(i => i).ToList()).Select((s, i) => new Segment(i, s.Concept, s.Score, s.Polygon, s.Holes)).ToArray();
+        return new SegmentationResult(Sam31Model, segments);
+    }
+
+    private async Task<List<Sam3Instances.Instance>> SegmentConceptAsync(SegmentationRequest request, string concept, CancellationToken cancellationToken)
+    {
         var instances = new List<Sam3Instances.Instance>();
-        foreach (var concept in request.Concepts)
+        using var message = new HttpRequestMessage(HttpMethod.Post, new Uri("responses", UriKind.Relative))
         {
-            using var message = new HttpRequestMessage(HttpMethod.Post, new Uri("responses", UriKind.Relative))
+            Content = JsonContent.Create(new
             {
-                Content = JsonContent.Create(new
+                model = Sam31Model, stream = false,
+                metadata = new { mask_encoding = "one_bit", include_confidence = "true" },
+                input = new[] { new { type = "message", role = "user", content = new object[]
                 {
-                    model = Sam31Model, stream = false,
-                    metadata = new { mask_encoding = "one_bit", include_confidence = "true" },
-                    input = new[] { new { type = "message", role = "user", content = new object[]
-                    {
-                        new { type = "input_text", text = concept },
-                        new { type = "input_image", image_url = $"data:{request.Image.ContentType};base64,{Convert.ToBase64String(request.Image.Bytes.Span)}" }
-                    } } }
-                })
-            };
-            message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", string.IsNullOrWhiteSpace(_meta.Sam31.ApiKey) ? _meta.Reasoning.ApiKey : _meta.Sam31.ApiKey);
-            using var response = await http.SendAsync(message, cancellationToken);
-            if (!response.IsSuccessStatusCode) throw new ModelUnavailableException($"Meta SAM 3.1 respondió {(int)response.StatusCode}.");
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            if (body.Length > 16 * 1024 * 1024) throw new ModelOutputException("La respuesta SAM supera el tamaño permitido.");
-            var geometry = await decoder.DecodeAsync(body, cancellationToken);
-            foreach (var item in geometry.Objects)
+                    new { type = "input_text", text = concept },
+                    new { type = "input_image", image_url = $"data:{request.Image.ContentType};base64,{Convert.ToBase64String(request.Image.Bytes.Span)}" }
+                } } }
+            })
+        };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", string.IsNullOrWhiteSpace(_meta.Sam31.ApiKey) ? _meta.Reasoning.ApiKey : _meta.Sam31.ApiKey);
+        using var response = await http.SendAsync(message, cancellationToken);
+        if (!response.IsSuccessStatusCode) throw new ModelUnavailableException($"Meta SAM 3.1 respondió {(int)response.StatusCode}.");
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (body.Length > 16 * 1024 * 1024) throw new ModelOutputException("La respuesta SAM supera el tamaño permitido.");
+        var geometry = await decoder.DecodeAsync(body, cancellationToken);
+        foreach (var item in geometry.Objects)
+        {
+            if (!double.IsFinite(item.Confidence) || item.Confidence is < 0 or > 1) throw new ModelOutputException("Confianza SAM inválida.");
+            if (item.Confidence < _meta.SegmentationScoreThreshold) continue;
+            var rings = item.Rings.Where(r => r.Length >= 3).ToArray();
+            if (rings.Any(ring => ring.Any(p => p.Length != 2 || !double.IsFinite(p[0]) || !double.IsFinite(p[1]) || p[0] < 0 || p[1] < 0 || p[0] > request.Image.Width || p[1] > request.Image.Height)))
+                throw new ModelOutputException("SAM devolvió una máscara fuera de las dimensiones de la imagen.");
+            // Holes are subtracted from the measured area, as with Roboflow.
+            // Specks of a few pixels are dropped, as with Roboflow.
+            var pixelRings = rings.Select(r => r.Select(p => (p[0], p[1])).ToArray()).Where(r => Math.Abs(Sam3Instances.SignedArea(r)) >= Sam3Instances.MinAreaPx);
+            foreach (var (outer, holes) in Sam3Instances.Nest(pixelRings))
             {
-                if (!double.IsFinite(item.Confidence) || item.Confidence is < 0 or > 1) throw new ModelOutputException("Confianza SAM inválida.");
-                if (item.Confidence < _meta.SegmentationScoreThreshold) continue;
-                var rings = item.Rings.Where(r => r.Length >= 3).ToArray();
-                if (rings.Any(ring => ring.Any(p => p.Length != 2 || !double.IsFinite(p[0]) || !double.IsFinite(p[1]) || p[0] < 0 || p[1] < 0 || p[0] > request.Image.Width || p[1] > request.Image.Height)))
-                    throw new ModelOutputException("SAM devolvió una máscara fuera de las dimensiones de la imagen.");
-                // Holes are subtracted from the measured area, as with Roboflow.
-                foreach (var (outer, holes) in Sam3Instances.Nest(rings.Select(r => r.Select(p => (p[0], p[1])).ToArray())))
-                {
-                    instances.Add(new Sam3Instances.Instance(concept, item.Confidence, Normalize(outer, request.Image),
-                        holes.Count > 0 ? holes.Select(h => Normalize(h, request.Image)).ToArray() : null));
-                }
+                instances.Add(new Sam3Instances.Instance(concept, item.Confidence, Normalize(outer, request.Image),
+                    holes.Count > 0 ? holes.Select(h => Normalize(h, request.Image)).ToArray() : null));
             }
         }
-        var segments = Sam3Instances.Deduplicate(instances).Select((s, i) => new Segment(i, s.Concept, s.Score, s.Polygon, s.Holes)).ToArray();
-        return new SegmentationResult(Sam31Model, segments);
+        return instances;
     }
 
     private static NormalizedPoint[] Normalize((double X, double Y)[] ring, ImagePayload image) =>

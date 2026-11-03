@@ -179,8 +179,8 @@ internal sealed class SimulatedMaintenanceAssistant : IMaintenanceAssistant
         }
 
         text.Append(en
-            ? "Set Ai:Provider = Meta to get an answer to your specific question."
-            : "Para responder a tu pregunta concreta configura Ai:Provider = Meta.");
+            ? "Add META_API_KEY to .env to get an answer to your specific question."
+            : "Para responder a tu pregunta concreta añade META_API_KEY al .env.");
         return Task.FromResult(text.ToString());
     }
 

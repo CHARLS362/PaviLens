@@ -98,11 +98,11 @@ internal sealed class SimulatedTrafficPlanner : ITrafficPlanner
             ? string.Create(inv,
                 $"[Simulation] {(full ? "Full closure" : $"Closure of {Count(sim.LanesClosed, "lane", "lanes")} per direction")} of {sim.SegmentName}. " +
                 $"Traffic is diverted along {Count(routes.Count, "route", "routes")} computed by the equilibrium model. " +
-                $"Recommended window: {recommended.ToLowerInvariant()}. Set Ai:Provider = Meta for the plan reasoned by Muse Wonder.")
+                $"Recommended window: {recommended.ToLowerInvariant()}. Add META_API_KEY to .env for the plan reasoned by Muse.")
             : string.Create(inv,
                 $"[Simulación] {(full ? "Cierre total" : $"Cierre de {Count(sim.LanesClosed, "carril", "carriles")} por sentido")} de {sim.SegmentName}. " +
                 $"El tránsito se desvía por {Count(routes.Count, "ruta calculada", "rutas calculadas")} por el modelo de equilibrio. " +
-                $"Franja recomendada: {recommended.ToLowerInvariant()}. Configura Ai:Provider = Meta para el plan razonado por Muse Wonder.");
+                $"Franja recomendada: {recommended.ToLowerInvariant()}. Añade META_API_KEY al .env para el plan razonado por Muse.");
 
         List<string> communication = en
             ? [$"Radio and municipal social media notice about the closure of {sim.SegmentName}.", "Coordination with urban bus companies to change their routes."]
