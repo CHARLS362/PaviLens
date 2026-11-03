@@ -1,0 +1,64 @@
+[
+  {
+    "file": "jr-lima-tramo.jpg",
+    "title": "Jr. Lima, cuadra 3 · tramo de 25 m",
+    "notes": "Toma oblicua desde el borde de la calzada. Calibración con el ancho de la vía (7 m) y 25 m de longitud medidos con wincha.",
+    "location": "Jr. Lima, cuadra 3 · Puno",
+    "roadSegmentId": "H11",
+    "calibration": {
+      "corners": [
+        [
+          0.08,
+          0.95
+        ],
+        [
+          0.92,
+          0.95
+        ],
+        [
+          0.6,
+          0.42
+        ],
+        [
+          0.4,
+          0.42
+        ]
+      ],
+      "widthM": 7.0,
+      "lengthM": 25.0
+    },
+    "groundTruthAreaM2": {
+      "B1": 0.38947,
+      "B2": 0.16857,
+      "PC1": 5.27879,
+      "FL1": 0.19291,
+      "FT1": 0.15477,
+      "AH1": 5.1
+    }
+  },
+  {
+    "file": "av-el-sol-bache.jpg",
+    "title": "Av. El Sol · bache en carril derecho",
+    "notes": "Foto cenital a 1.6 m de altura; el encuadre cubre 3 m de ancho.",
+    "location": "Av. El Sol, frente al mercado · Puno",
+    "roadSegmentId": "V13",
+    "referenceWidthM": 3.0,
+    "groundTruthAreaM2": {
+      "B1": 0.56882,
+      "FL1": 0.03553
+    }
+  },
+  {
+    "file": "jr-arequipa-cocodrilo.jpg",
+    "title": "Jr. Arequipa · piel de cocodrilo",
+    "notes": "Foto cenital; el encuadre cubre 4 m de ancho.",
+    "location": "Jr. Arequipa, cuadra 5 · Puno",
+    "roadSegmentId": "H30",
+    "referenceWidthM": 4.0,
+    "groundTruthAreaM2": {
+      "PC1": 2.79659,
+      "FT1": 0.07514,
+      "B1": 0.07795
+    }
+  }
+]

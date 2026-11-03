@@ -1,0 +1,85 @@
+@host = http://localhost:5000
+@api = {{host}}/api/v1
+
+### Liveness / readiness
+GET {{host}}/health
+###
+GET {{host}}/health/ready
+
+### List inspections
+GET {{api}}/inspections?page=1&pageSize=20
+
+### Create inspection: nadir photo, scale from the visible width (multipart)
+POST {{api}}/inspections
+Content-Type: multipart/form-data; boundary=pavelens
+
+--pavelens
+Content-Disposition: form-data; name="title"
+
+Av. El Sol — prueba manual
+--pavelens
+Content-Disposition: form-data; name="notes"
+
+Bache con agua empozada.
+--pavelens
+Content-Disposition: form-data; name="referenceWidthM"
+
+3.0
+--pavelens
+Content-Disposition: form-data; name="roadSegmentId"
+
+V13
+--pavelens
+Content-Disposition: form-data; name="image"; filename="av-el-sol-bache.jpg"
+Content-Type: image/jpeg
+
+< ../../samples/av-el-sol-bache.jpg
+--pavelens--
+
+### Create inspection: oblique photo with a 4-point calibration
+POST {{api}}/inspections
+Content-Type: multipart/form-data; boundary=pavelens
+
+--pavelens
+Content-Disposition: form-data; name="title"
+
+Jr. Lima — tramo calibrado
+--pavelens
+Content-Disposition: form-data; name="calibration"
+
+{"corners":[[0.08,0.95],[0.92,0.95],[0.60,0.42],[0.40,0.42]],"widthM":7,"lengthM":25}
+--pavelens
+Content-Disposition: form-data; name="image"; filename="jr-lima-tramo.jpg"
+Content-Type: image/jpeg
+
+< ../../samples/jr-lima-tramo.jpg
+--pavelens--
+
+### Detail (replace the ids)
+@id = 00000000-0000-0000-0000-000000000000
+@distressId = 00000000-0000-0000-0000-000000000000
+GET {{api}}/inspections/{{id}}
+
+### Budget (APU)
+GET {{api}}/inspections/{{id}}/budget
+
+### Field-measured depth of a pothole
+PUT {{api}}/inspections/{{id}}/distresses/{{distressId}}/depth
+Content-Type: application/json
+
+{ "depthM": 0.06 }
+
+### Ask the assistant
+POST {{api}}/inspections/{{id}}/conversation
+Content-Type: application/json
+
+{ "question": "¿Cuánta mezcla en caliente necesito para todo el tramo?" }
+
+### Road network (synthetic demo)
+GET {{api}}/network
+
+### Work zone: close one lane of Jr. Lima (H11)
+POST {{api}}/traffic/simulate
+Content-Type: application/json
+
+{ "segmentId": "H11", "lanesClosed": 1 }

@@ -1,0 +1,291 @@
+<div class="backdrop" (click)="close()">
+  <div #dialog class="dialog" role="dialog" aria-modal="true" aria-labelledby="capture-title" aria-describedby="capture-step" tabindex="-1"
+    (click)="$event.stopPropagation()" (keydown.tab)="trapFocus($event)" (keydown.shift.tab)="trapFocus($event)">
+    <header class="dialog-head">
+      <div>
+        <h2 id="capture-title">{{ 'Nueva inspección' | t }}</h2>
+        <ol class="stepper" [attr.aria-label]="'Pasos' | t">
+          <li [class.active]="step() === 'photo'" [class.done]="step() !== 'photo'" [attr.aria-current]="step() === 'photo' ? 'step' : null"><span aria-hidden="true">1</span>{{ 'Fotografía' | t }}</li>
+          <li [class.active]="step() === 'scale'" [class.done]="step() === 'details'" [attr.aria-current]="step() === 'scale' ? 'step' : null"><span aria-hidden="true">2</span>{{ 'Escala' | t }}</li>
+          <li [class.active]="step() === 'details'" [attr.aria-current]="step() === 'details' ? 'step' : null"><span aria-hidden="true">3</span>{{ 'Datos y estimación' | t }}</li>
+        </ol>
+        <p id="capture-step" class="sr-only" aria-live="polite">{{ 'Paso {n} de 3: {title}' | t: { n: stepNumber(), title: (stepTitle() | t) } }}</p>
+      </div>
+      <button class="icon-btn" [attr.aria-label]="'Cerrar sin guardar' | t" (click)="close()">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+      </button>
+    </header>
+
+    <div class="dialog-body">
+      <!-- ============ 1. PHOTO ============ -->
+      @if (step() === 'photo') {
+        @if (previewUrl(); as url) {
+          <figure class="photo-preview">
+            <img [src]="url" [alt]="'Fotografía seleccionada' | t" />
+            <figcaption>
+              <span>{{ file()?.name }}</span>
+              @if (imageSize(); as s) {
+                @let kb = (file()?.size ?? 0) / 1024;
+                <span class="mono">{{ s.w }} × {{ s.h }} px · {{ kb >= 1024 ? (kb / 1024 | number:'1.1-1') + ' MB' : (kb | number:'1.0-0') + ' KB' }}</span> }
+              <button class="btn btn-secondary btn-sm" (click)="retake()">{{ (source() === 'camera' ? 'Repetir captura' : 'Cambiar foto') | t }}</button>
+            </figcaption>
+          </figure>
+        } @else {
+          <div class="source-tabs" role="group" [attr.aria-label]="'Origen de la foto' | t">
+            <button [class.active]="source() === 'file'" [attr.aria-pressed]="source() === 'file'" (click)="useSource('file')">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 14v3h14v-3M10 3v10M6 7l4-4 4 4" /></svg>
+              {{ 'Subir fotografía' | t }}
+            </button>
+            <button [class.active]="source() === 'camera'" [attr.aria-pressed]="source() === 'camera'" (click)="useSource('camera')">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 6.5h3l1.5-2h6l1.5 2h3v9h-15z" /><circle cx="10" cy="11" r="3" /></svg>
+              {{ 'Usar cámara' | t }}
+            </button>
+          </div>
+
+          @if (source() === 'file') {
+            <label
+              class="dropzone"
+              [class.dragging]="isDragging()"
+              (dragover)="$event.preventDefault(); isDragging.set(true)"
+              (dragleave)="isDragging.set(false)"
+              (drop)="onDrop($event)">
+              <input type="file" accept="image/jpeg,image/png,image/webp" [attr.aria-label]="'Elegir una fotografía del pavimento' | t" (change)="onFileSelected($event)" />
+              <svg class="dz-icon" viewBox="0 0 48 48" aria-hidden="true">
+                <rect x="6" y="10" width="36" height="28" rx="3" />
+                <path d="M6 32l10-10 8 8 6-6 12 12" />
+                <circle cx="32" cy="18" r="3" />
+              </svg>
+              <span class="dz-title">{{ 'Arrastra una fotografía aquí o pulsa para elegirla' | t }}</span>
+              <span class="dz-hint">{{ 'JPEG, PNG o WebP hasta 10 MB' | t }}</span>
+            </label>
+            <label class="btn btn-secondary mobile-capture">
+              <input type="file" accept="image/*" capture="environment" (change)="onFileSelected($event)" />
+              {{ 'Tomar foto con el celular' | t }}
+            </label>
+            @if (fileError(); as e) {
+              <p class="error-box" role="alert">{{ e | t }}</p>
+            }
+            <section class="samples" [attr.aria-busy]="loadingSample()">
+              <h3 class="samples-title">{{ '¿Sin una foto a mano? Prueba con una escena de muestra' | t }}</h3>
+              <div class="samples-list">
+                @for (s of samples; track s.file) {
+                  <button class="sample" type="button" [disabled]="loadingSample()" (click)="useSample(s)">
+                    <img [src]="'samples/' + s.file" alt="" loading="lazy" />
+                    <span class="sample-name">{{ s.label | t }}</span>
+                    <span class="sample-hint">{{ s.hint | t }}</span>
+                  </button>
+                }
+              </div>
+            </section>
+          } @else {
+            <div class="camera">
+              @if (cameraError(); as e) {
+                <p class="camera-error" role="alert">{{ e | t }}</p>
+              } @else {
+                <video #video playsinline muted [attr.aria-label]="'Vista previa de la cámara' | t"></video>
+                <div class="camera-guides" aria-hidden="true">
+                  <span class="guide-h"></span><span class="guide-h b"></span>
+                  <span class="guide-v"></span><span class="guide-v b"></span>
+                  <span class="guide-text">{{ 'Encuadra la calzada completa · evita sombras duras' | t }}</span>
+                </div>
+                <div class="camera-bar">
+                  @if (devices().length > 1) {
+                    <button class="btn btn-secondary btn-sm" (click)="switchCamera()">{{ 'Cambiar cámara' | t }}</button>
+                  }
+                  <button class="shutter" [attr.aria-label]="'Tomar la foto' | t" [disabled]="!stream()" (click)="capture()"><span></span></button>
+                </div>
+              }
+            </div>
+          }
+
+          <ul class="tips">
+            <li><b>{{ 'Foto desde arriba' | t }}</b> {{ '(dron o pértiga): solo necesitas saber el ancho de la calle que se ve.' | t }}</li>
+            <li><b>{{ 'Foto en ángulo' | t }}</b> {{ '(de pie o desde un vehículo): marcarás 4 esquinas de un rectángulo de medidas conocidas, como las líneas de un carril.' | t }}</li>
+          </ul>
+        }
+      }
+
+      <!-- ============ 2. SCALE ============ -->
+      @if (step() === 'scale') {
+        <div class="scale-mode" role="group" [attr.aria-label]="'Cómo se tomó la foto' | t">
+          <button class="mode" [class.active]="scaleMode() === 'nadir'" [attr.aria-pressed]="scaleMode() === 'nadir'" (click)="scaleMode.set('nadir')">
+            <svg viewBox="0 0 40 28" aria-hidden="true"><rect x="6" y="4" width="28" height="20" rx="1" /><path d="M6 24L34 24M20 4v20" class="dash" /></svg>
+            <span><b>{{ 'Desde arriba' | t }}</b><small>{{ 'Cámara mirando al suelo (cenital)' | t }}</small></span>
+          </button>
+          <button class="mode" [class.active]="scaleMode() === 'oblique'" [attr.aria-pressed]="scaleMode() === 'oblique'" (click)="scaleMode.set('oblique')">
+            <svg viewBox="0 0 40 28" aria-hidden="true"><path d="M4 24L14 4H26L36 24Z" /><path d="M20 4v20" class="dash" /></svg>
+            <span><b>{{ 'En ángulo' | t }}</b><small>{{ 'Marcando 4 esquinas (oblicua)' | t }}</small></span>
+          </button>
+        </div>
+
+        @if (scaleMode() === 'nadir') {
+          <div class="nadir">
+            <div class="field">
+              <label for="cap-width">{{ 'Ancho visible de la calzada (m)' | t }}</label>
+              <input id="cap-width" type="number" inputmode="decimal" min="0.5" max="100" step="0.1" aria-describedby="cap-width-help" [ngModel]="widthM()" (ngModelChange)="widthM.set($event)" />
+              <span id="cap-width-help" class="help">{{ 'Distancia sobre el suelo entre el borde izquierdo y el derecho de la foto.' | t }}</span>
+            </div>
+            <div class="chips" role="group" [attr.aria-label]="'Anchos frecuentes' | t">
+              @for (p of widthPresets; track p.value) {
+                <button class="chip" [class.active]="widthM() === p.value" [attr.aria-pressed]="widthM() === p.value" (click)="widthM.set(p.value)">{{ p.label | t }}</button>
+              }
+            </div>
+            @if (previewUrl(); as url) {
+              <div class="nadir-preview">
+                <img [src]="url" alt="" />
+                <span class="width-ruler"><span>{{ widthM() | number:'1.1-2' }} m</span></span>
+              </div>
+            }
+          </div>
+        } @else if (scaleMode() === 'oblique') {
+          <div class="oblique">
+            <p class="instructions" aria-live="polite">
+              @if (corners().length < 4) {
+                {{ 'Toca en la foto la esquina' | t }} <b>{{ cornerNames[corners().length] | t }}</b> ({{ '{n} de 4' | t: { n: corners().length + 1 } }})
+                {{ 'de un rectángulo del pavimento cuyas medidas conozcas. Si te resulta difícil, pulsa' | t }} <b>{{ 'Colocar esquinas guía' | t }}</b> {{ 'y ajústalas.' | t }}
+              } @else if (calibrationValid()) {
+                {{ 'Calibración lista. Arrastra los puntos, o selecciónalos y usa las flechas del teclado, hasta que la cuadrícula siga el pavimento.' | t }}
+              } @else {
+                {{ 'Las esquinas se cruzan o no siguen el orden indicado (1 y 2 cerca, 3 y 4 lejos). Ajústalas o vuelve a marcarlas.' | t }}
+              }
+            </p>
+
+            <div class="calib-wrap">
+              <div class="calib-stage" (click)="onCalibrationClick($event)" (pointermove)="onDrag($event)" (pointerup)="endDrag()">
+                <img [src]="previewUrl()" [alt]="'Fotografía a calibrar' | t" draggable="false" />
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                  @if (corners().length > 1) {
+                    <polygon class="quad" [class.closed]="corners().length === 4" [class.invalid]="corners().length === 4 && !calibrationValid()" [attr.points]="quadPoints()" />
+                  }
+                  @for (g of gridLines(); track $index) {
+                    <path class="grid" [attr.d]="g" />
+                  }
+                </svg>
+                @for (c of corners(); track $index; let i = $index) {
+                  <button
+                    class="handle"
+                    [style.left.%]="c[0] * 100"
+                    [style.top.%]="c[1] * 100"
+                    [attr.aria-label]="'Esquina {name}. Muévela con las flechas' | t: { name: (cornerNames[i] | t) }"
+                    (pointerdown)="startDrag(i, $event)"
+                    (keydown)="nudge(i, $event)">{{ i + 1 }}</button>
+                }
+              </div>
+            </div>
+
+            <div class="calib-form">
+              <div class="field">
+                <label for="cap-w">{{ 'Ancho del rectángulo (m)' | t }}</label>
+                <input id="cap-w" type="number" inputmode="decimal" min="0.1" max="100" step="0.05" [ngModel]="rectW()" (ngModelChange)="rectW.set($event)" />
+              </div>
+              <div class="field">
+                <label for="cap-l">{{ 'Largo del rectángulo (m)' | t }}</label>
+                <input id="cap-l" type="number" inputmode="decimal" min="0.1" max="500" step="0.1" [ngModel]="rectL()" (ngModelChange)="rectL.set($event)" />
+              </div>
+              <div class="calib-actions">
+                <button class="btn btn-secondary btn-sm" (click)="placeGuideCorners()">{{ 'Colocar esquinas guía' | t }}</button>
+                <button class="btn btn-text" [disabled]="!corners().length" (click)="resetCorners()">{{ 'Volver a marcar' | t }}</button>
+              </div>
+            </div>
+            <div class="chips" role="group" [attr.aria-label]="'Rectángulos frecuentes' | t">
+              @for (p of rectPresets; track p.label) {
+                <button class="chip" [class.active]="rectW() === p.w && rectL() === p.l" [attr.aria-pressed]="rectW() === p.w && rectL() === p.l" (click)="applyRectPreset(p)">{{ p.label | t }}</button>
+              }
+            </div>
+          </div>
+        }
+      }
+
+      <!-- ============ 3. DETAILS + ESTIMATE ============ -->
+      @if (step() === 'details') {
+        <div class="details">
+          <div class="details-form">
+            <div class="field">
+              <label for="cap-title">{{ 'Título' | t }} <span class="req">{{ '(obligatorio)' | t }}</span></label>
+              <input id="cap-title" type="text" required [placeholder]="'Jr. Lima, cuadra 3 · bache' | t" [ngModel]="title()" (ngModelChange)="title.set($event)" />
+            </div>
+            <div class="field">
+              <label for="cap-loc">{{ 'Ubicación' | t }}</label>
+              <div class="with-action">
+                <input id="cap-loc" type="text" [placeholder]="'Jr. Lima, cuadra 3' | t" [ngModel]="location()" (ngModelChange)="location.set($event)" />
+                <button class="btn btn-secondary btn-sm" [disabled]="locating()" (click)="useMyLocation()">
+                  {{ (locating() ? 'Ubicando…' : 'Usar mi ubicación') | t }}
+                </button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="cap-seg">{{ 'Tramo de la red vial' | t }}</label>
+              <select id="cap-seg" [ngModel]="segmentId()" (ngModelChange)="segmentId.set($event)">
+                <option value="">{{ 'Sin asignar' | t }}</option>
+                @for (s of segments(); track s.id) {
+                  <option [value]="s.id">{{ s.id }} · {{ s.name }}</option>
+                }
+              </select>
+              <span class="help">{{ 'Permite simular el cierre de este tramo en el planificador de desvíos.' | t }}</span>
+            </div>
+            <div class="field">
+              <label for="cap-notes">{{ 'Notas de campo' | t }}</label>
+              <textarea id="cap-notes" rows="3" [placeholder]="'Profundidad observada, drenaje, tránsito pesado…' | t" [ngModel]="notes()" (ngModelChange)="notes.set($event)"></textarea>
+            </div>
+          </div>
+
+          <aside class="estimate" aria-labelledby="estimate-title">
+            <h3 id="estimate-title">{{ 'Estimación previa' | t }}</h3>
+            @if (estimate(); as e) {
+              <dl>
+                <div>
+                  <dt>{{ 'Resolución en el suelo' | t }}</dt>
+                  <dd>
+                    @if (e.near === e.far) {
+                      {{ e.near | number:'1.1-1' }} <small>{{ 'mm/px' | t }}</small>
+                    } @else {
+                      {{ e.near | number:'1.1-1' }} – {{ e.far | number:'1.1-1' }} <small>{{ 'mm/px' | t }}</small>
+                    }
+                  </dd>
+                  <span class="note">
+                    {{ (e.near === e.far
+                      ? 'Milímetros de suelo que cubre cada píxel, igual en toda la foto. Menos es más detalle.'
+                      : 'Milímetros de suelo que cubre cada píxel, de cerca a lejos. Menos es más detalle.') | t }}
+                  </span>
+                </div>
+                <div>
+                  <dt>{{ 'Fisura más fina medible' | t }}</dt>
+                  <dd>≈ {{ e.minCrackMm | number:'1.0-0' }} <small>mm</small></dd>
+                  <span class="note">{{ (e.near !== e.far
+                    ? 'Las grietas más finas que esto pueden no detectarse en la zona lejana.'
+                    : 'Las grietas más finas que esto pueden no detectarse.') | t }}</span>
+                </div>
+                <div>
+                  <dt>{{ 'Superficie evaluada' | t }}</dt>
+                  <dd>{{ e.area | number:'1.1-1' }} <small>m²</small></dd>
+                  <span class="note" [class.warn]="e.partial">
+                    {{ (e.partial ? 'Es menos de los 135 m² que pide la norma ASTM: la nota de condición (PCI) será parcial y puede salir más alta que la real.' : 'Cubre una unidad de muestreo completa de la norma ASTM D6433.') | t }}
+                  </span>
+                </div>
+              </dl>
+              <p class="pipeline-note">
+                {{ 'Al pulsar Analizar, la IA (SAM 3) dibuja cada daño, PaveLens lo mide en metros y calcula la nota de condición (PCI), el material y el presupuesto. La profundidad se estima según la gravedad hasta que la midas en campo.' | t }}
+              </p>
+            } @else {
+              <p class="muted">{{ 'Completa la escala para estimar la resolución.' | t }}</p>
+            }
+          </aside>
+        </div>
+      }
+    </div>
+
+    <footer class="dialog-foot">
+      @if (step() !== 'photo') {
+        <button class="btn btn-secondary" (click)="back()">{{ 'Atrás' | t }}</button>
+      }
+      <span class="spacer"></span>
+      @if (blockedReason(); as why) {
+        <span class="foot-hint" id="capture-blocked">{{ why | t }}</span>
+      }
+      <button class="btn btn-secondary" (click)="close()">{{ 'Cancelar' | t }}</button>
+      <button class="btn btn-primary" [disabled]="!canContinue()" [attr.aria-describedby]="blockedReason() ? 'capture-blocked' : null" (click)="next()">
+        {{ (step() === 'details' ? (busy() ? 'Subiendo…' : 'Analizar') : 'Continuar') | t }}
+      </button>
+    </footer>
+  </div>
+</div>

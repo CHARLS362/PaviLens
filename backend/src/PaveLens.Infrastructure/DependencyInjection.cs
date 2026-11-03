@@ -1,0 +1,128 @@
+using PaveLens.Application.Abstractions;
+using PaveLens.Infrastructure.Ai;
+using PaveLens.Infrastructure.Ai.Meta;
+using PaveLens.Infrastructure.Ai.Simulation;
+using PaveLens.Infrastructure.Persistence;
+using PaveLens.Infrastructure.Processing;
+using PaveLens.Infrastructure.Storage;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+
+namespace PaveLens.Infrastructure;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, string contentRoot)
+    {
+        AddPersistence(services, configuration, contentRoot);
+
+        services.AddOptions<StorageOptions>().Bind(configuration.GetSection(StorageOptions.SectionName))
+            .ValidateDataAnnotations().ValidateOnStart();
+        services.AddSingleton<IImageStorage>(sp =>
+            new LocalImageStorage(sp.GetRequiredService<IOptions<StorageOptions>>(), contentRoot));
+
+        services.AddSingleton<IInspectionQueue, InMemoryInspectionQueue>();
+        services.AddHostedService<InspectionWorker>();
+
+        AddAi(services, configuration);
+        return services;
+    }
+
+    private static void AddPersistence(IServiceCollection services, IConfiguration configuration, string contentRoot)
+    {
+        services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(DatabaseOptions.SectionName));
+        services.AddOptions<SeedOptions>().Bind(configuration.GetSection(SeedOptions.SectionName))
+            .ValidateDataAnnotations().ValidateOnStart();
+
+        var provider = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>()?.Provider ?? DatabaseProvider.Sqlite;
+        var connectionString = configuration.GetConnectionString("PaveLens")
+            ?? throw new InvalidOperationException("Falta ConnectionStrings:PaveLens.");
+
+        switch (provider)
+        {
+            case DatabaseProvider.Sqlite:
+                services.AddDbContext<SqliteAppDbContext>(o => o.UseSqlite(ResolveSqlitePath(connectionString, contentRoot)));
+                services.AddScoped<AppDbContext>(sp => sp.GetRequiredService<SqliteAppDbContext>());
+                break;
+            case DatabaseProvider.Postgres:
+                services.AddDbContext<PostgresAppDbContext>(o => o.UseNpgsql(connectionString));
+                services.AddScoped<AppDbContext>(sp => sp.GetRequiredService<PostgresAppDbContext>());
+                break;
+            default:
+                throw new InvalidOperationException($"Proveedor de base de datos no soportado: {provider}");
+        }
+
+        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<IInspectionRepository, InspectionRepository>();
+        services.AddScoped<IImageRepository, ImageRepository>();
+        services.AddScoped<IConversationRepository, ConversationRepository>();
+        services.AddScoped<IInspectionQueries, InspectionQueries>();
+
+        services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
+    }
+
+    // A relative SQLite file is anchored to the content root (not the process working directory).
+    private static string ResolveSqlitePath(string connectionString, string contentRoot)
+    {
+        var builder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(connectionString);
+        if (builder.DataSource != ":memory:" && !Path.IsPathRooted(builder.DataSource))
+        {
+            builder.DataSource = Path.GetFullPath(Path.Combine(contentRoot, builder.DataSource));
+            Directory.CreateDirectory(Path.GetDirectoryName(builder.DataSource)!);
+        }
+
+        return builder.ToString();
+    }
+
+    private static void AddAi(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<AiOptions>().Bind(configuration.GetSection(AiOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<AiOptions>, AiOptionsValidator>();
+
+        var options = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
+        if (options.Provider == AiProvider.Simulation)
+        {
+            services.AddSingleton<SimulationCatalog>();
+            services.AddSingleton<IDistressSegmenter, SimulatedSegmenter>();
+            services.AddSingleton<IDiagnosticReasoner, SimulatedReasoner>();
+            services.AddSingleton<IMaintenanceAssistant, SimulatedMaintenanceAssistant>();
+            services.AddSingleton<ITrafficPlanner, SimulatedTrafficPlanner>();
+            return;
+        }
+
+        var segmentation = options.Meta.SegmentationService == SegmentationService.Roboflow
+            ? services.AddHttpClient<IDistressSegmenter, RoboflowSam3Segmenter>((sp, http) =>
+                Configure(http, sp.GetRequiredService<IOptions<AiOptions>>().Value.Meta.Segmentation))
+            : services.AddHttpClient<IDistressSegmenter, MetaSegmentationClient>((sp, http) =>
+                Configure(http, sp.GetRequiredService<IOptions<AiOptions>>().Value.Meta.Segmentation));
+        segmentation.AddStandardResilienceHandler(o => ConfigureResilience(o, options.Meta.Segmentation));
+
+        services.AddHttpClient<MetaChatClient>((sp, http) =>
+                Configure(http, sp.GetRequiredService<IOptions<AiOptions>>().Value.Meta.Reasoning))
+            .AddStandardResilienceHandler(o => ConfigureResilience(o, options.Meta.Reasoning));
+
+        services.AddTransient<IDiagnosticReasoner, MetaReasoner>();
+        services.AddTransient<IMaintenanceAssistant, MetaMaintenanceAssistant>();
+        services.AddTransient<ITrafficPlanner, MetaTrafficPlanner>();
+    }
+
+    private static void Configure(HttpClient http, EndpointOptions endpoint)
+    {
+        // Relative request URIs ("v1/segment", "chat/completions") need a trailing slash on the base.
+        var baseUrl = endpoint.BaseUrl!.ToString();
+        http.BaseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/");
+        // The resilience pipeline owns timeouts; the client-level one is only a backstop.
+        http.Timeout = Timeout.InfiniteTimeSpan;
+    }
+
+    private static void ConfigureResilience(Microsoft.Extensions.Http.Resilience.HttpStandardResilienceOptions o, EndpointOptions endpoint)
+    {
+        var attempt = TimeSpan.FromSeconds(endpoint.TimeoutSeconds);
+        o.AttemptTimeout.Timeout = attempt;
+        o.TotalRequestTimeout.Timeout = attempt * 3;
+        o.CircuitBreaker.SamplingDuration = attempt * 2;
+        o.Retry.MaxRetryAttempts = 2;
+    }
+}

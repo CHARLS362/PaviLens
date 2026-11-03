@@ -1,0 +1,75 @@
+{
+  "sha256": "*",
+  "summary": "[Simulación] Esta imagen no pertenece al catálogo de demostración: los deterioros mostrados son un ejemplo fijo y no corresponden a la foto. Configura Ai:Provider = Meta para analizarla con SAM 3 y Muse Wonder.",
+  "distresses": [
+    {
+      "concept": "pothole",
+      "score": 0.94,
+      "polygon": [[0.40, 0.55], [0.47, 0.52], [0.55, 0.53], [0.60, 0.58], [0.58, 0.65], [0.50, 0.68], [0.42, 0.66], [0.38, 0.60]],
+      "code": "B1",
+      "type": "Pothole",
+      "severity": "Medium",
+      "diagnosis": "Ejemplo: bache de bordes verticales con material suelto en el fondo.",
+      "recommendedAction": "Ejemplo: bacheo profundo con corte rectangular y mezcla en caliente."
+    },
+    {
+      "concept": "longitudinal crack",
+      "score": 0.86,
+      "polygon": [[0.20, 0.20], [0.215, 0.20], [0.235, 0.50], [0.25, 0.85], [0.235, 0.85], [0.22, 0.50]],
+      "code": "F1",
+      "type": "LongitudinalCrack",
+      "severity": "Low",
+      "diagnosis": "Ejemplo: fisura longitudinal fina sin desprendimiento de bordes.",
+      "recommendedAction": "Ejemplo: limpiar con aire comprimido y sellar con emulsión asfáltica."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Señalizar la zona de trabajo",
+      "instructions": "Coloca conos y señales de desvío según el plan de tráfico antes de cerrar el carril.",
+      "tools": ["Conos", "Señales de desvío", "Chalecos reflectivos"],
+      "risk": "Medium",
+      "target": null
+    },
+    {
+      "title": "Bacheo de B1",
+      "instructions": "Corta un rectángulo 15 cm más allá del borde visible, retira el material, aplica riego de liga y repón con mezcla en caliente compactada por capas.",
+      "tools": ["Cortadora de disco", "Martillo neumático", "Rodillo o plancha vibratoria"],
+      "risk": "Medium",
+      "target": "B1"
+    }
+  ],
+  "en": {
+    "summary": "[Simulation] This image is not in the demo catalogue: the distresses shown are a fixed example and do not match the photo. Set Ai:Provider = Meta to analyse it with SAM 3 and Muse Wonder.",
+    "distresses": {
+      "B1": {
+        "diagnosis": "Example: pothole with vertical edges and loose material at the bottom.",
+        "recommendedAction": "Example: full-depth patch with a rectangular cut and hot mix."
+      },
+      "F1": {
+        "diagnosis": "Example: fine longitudinal crack without edge spalling.",
+        "recommendedAction": "Example: blow clean with compressed air and seal with asphalt emulsion."
+      }
+    },
+    "steps": [
+      {
+        "title": "Sign the work zone",
+        "instructions": "Place cones and detour signs according to the traffic plan before closing the lane.",
+        "tools": [
+          "Cones",
+          "Detour signs",
+          "Reflective vests"
+        ]
+      },
+      {
+        "title": "Patch B1",
+        "instructions": "Cut a rectangle 15 cm beyond the visible edge, remove the material, apply a tack coat and refill with hot mix compacted in layers.",
+        "tools": [
+          "Disc saw",
+          "Jackhammer",
+          "Roller or plate compactor"
+        ]
+      }
+    ]
+  }
+}

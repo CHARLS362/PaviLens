@@ -1,0 +1,32 @@
+# .NET
+bin/
+obj/
+TestResults/
+*.user
+.vs/
+
+# Runtime data: SQLite database and uploaded images
+**/App_Data/
+*.db
+*.db-shm
+*.db-wal
+
+# Local secrets (use `dotnet user-secrets` or environment variables)
+appsettings.*.local.json
+.env
+
+# Angular / Node
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.claude/
+.vscode/*
+!.vscode/extensions.json
+
+# Local tool output
+.playwright-mcp/

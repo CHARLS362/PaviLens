@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/PaveLens.Domain/PaveLens.Domain.csproj" />
+    <Project Path="src/PaveLens.Application/PaveLens.Application.csproj" />
+    <Project Path="src/PaveLens.Infrastructure/PaveLens.Infrastructure.csproj" />
+    <Project Path="src/PaveLens.Api/PaveLens.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PaveLens.UnitTests/PaveLens.UnitTests.csproj" />
+    <Project Path="tests/PaveLens.IntegrationTests/PaveLens.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

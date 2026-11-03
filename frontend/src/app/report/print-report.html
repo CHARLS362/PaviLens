@@ -1,0 +1,206 @@
+@let a = inspection();
+<article class="report" [attr.lang]="a.language === 'En' ? 'en' : 'es'">
+  <header class="r-head">
+    <div>
+      <p class="r-kicker">PaveLens AI · {{ 'Expediente de inspección de pavimento' | t }}</p>
+      <h1>{{ a.title }}</h1>
+      <p class="r-meta">
+        @if (a.location) { <span>{{ a.location }}</span> }
+        @if (a.roadSegmentId) { <span>{{ 'Tramo' | t }} {{ a.roadSegmentId }}{{ segmentName() ? ' · ' + segmentName() : '' }}</span> }
+        <span>{{ 'Inspeccionado' | t }} {{ (a.completedAt ?? a.createdAt) | date: 'd MMM y, HH:mm' }}</span>
+      </p>
+    </div>
+    <div class="r-id">
+      <span>{{ 'Expediente' | t }}</span>
+      <b>{{ a.id.slice(0, 8).toUpperCase() }}</b>
+    </div>
+  </header>
+
+  @if (a.engine === 'Simulation') {
+    <p class="r-warning">{{ 'Resultado de demostración: las máscaras y los textos provienen de escenarios simulados, no de SAM 3 ni de Muse Wonder. No usar para decidir una obra.' | t }}</p>
+  }
+
+  <section class="r-top">
+    <figure class="r-photo">
+      <div class="r-stage">
+        <img [src]="a.image.url" [alt]="'Fotografía del pavimento inspeccionado' | t" />
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          @for (d of a.distresses; track d.id) {
+            <polygon [attr.points]="points(d)" [class]="'sev-' + d.severity.toLowerCase()" [class.crack]="isCrack(d.type)" />
+          }
+        </svg>
+        @for (d of a.distresses; track d.id) {
+          <span class="r-label" [class]="'r-label sev-' + d.severity.toLowerCase()" [style.left.%]="d.box.x * 100" [style.top.%]="d.box.y * 100">{{ d.code }}</span>
+        }
+      </div>
+      <figcaption>
+        @if (a.calibration; as cal) {
+          {{ 'Medición por homografía de 4 puntos sobre un rectángulo de {w} × {l} m.' | t: { w: cal.widthM, l: cal.lengthM } }}
+        } @else {
+          {{ 'Foto cenital escalada por un ancho visible de {w} m.' | t: { w: a.referenceWidthM } }}
+        }
+        {{ 'Superficie evaluada' | t }}: {{ a.surveyedAreaM2 | number: '1.1-1' }} m².
+      </figcaption>
+    </figure>
+
+    <div class="r-kpis">
+      @if (a.pci; as pci) {
+        <div class="r-pci" [class]="'r-pci ' + pciClass(pci.pci)">
+          <span class="r-k-label">PCI (ASTM D6433){{ pci.isPartial ? (' (parcial)' | t) : '' }}</span>
+          <span class="r-pci-value">{{ pci.pci | number: '1.0-1' }}</span>
+          <span class="r-pci-rating">{{ pci.rating | t }}</span>
+          <span class="r-pci-treat">{{ pci.treatment | t }}</span>
+        </div>
+      }
+      <dl class="r-facts">
+        <div><dt>{{ 'Deterioros' | t }}</dt><dd>{{ a.distresses.length }}</dd></div>
+        <div><dt>{{ 'Baches' | t }}</dt><dd>{{ potholes() }}</dd></div>
+        <div><dt>{{ 'Área afectada' | t }}</dt><dd>{{ affectedM2() | number: '1.2-2' }} m²</dd></div>
+        <div><dt>{{ 'Mezcla asfáltica' | t }}</dt><dd>{{ massT() | number: '1.2-2' }} t</dd></div>
+        @if (budget(); as b) {
+          <div class="r-total"><dt>{{ 'Presupuesto total' | t }}</dt><dd>{{ b.currency }} {{ b.total | number: '1.2-2' }}</dd></div>
+        }
+      </dl>
+    </div>
+  </section>
+
+  @if (a.summary) {
+    <section class="r-section">
+      <h2>{{ 'Diagnóstico del tramo' | t }}</h2>
+      <p>{{ a.summary }}</p>
+    </section>
+  }
+
+  <section class="r-section">
+    <h2>{{ 'Registro de deterioros' | t }}</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>{{ 'Código' | t }}</th><th>{{ 'Tipo' | t }}</th><th>{{ 'Gravedad' | t }}</th>
+          <th class="num">{{ 'Medida' | t }}</th><th class="num">{{ 'Largo × ancho' | t }}</th>
+          <th class="num">{{ 'Profundidad' | t }}</th><th class="num">{{ 'Volumen' | t }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of a.distresses; track d.id) {
+          <tr>
+            <td class="code">{{ d.code }}</td>
+            <td>{{ type(d) }}</td>
+            <td><span class="sev" [class]="'sev sev-' + d.severity.toLowerCase()">{{ severity(d) }}</span></td>
+            <td class="num">{{ isCrack(d.type) ? (d.measurement.lengthM | number: '1.2-2') + ' m' : (d.measurement.areaM2 | number: '1.2-2') + ' m²' }}</td>
+            <td class="num">{{ d.measurement.lengthM | number: '1.2-2' }} × {{ d.measurement.widthM | number: '1.2-2' }} m</td>
+            @if (d.quantities; as q) {
+              <td class="num">{{ q.depthM * 100 | number: '1.1-1' }} cm <small>{{ (q.depthSource === 'Measured' ? 'medida' : 'supuesta') | t }}</small></td>
+              <td class="num">{{ q.volumeM3 | number: '1.3-3' }} m³</td>
+            } @else {
+              <td class="num muted" colspan="2">{{ 'Sellado por metro lineal' | t }}</td>
+            }
+          </tr>
+          @if (d.diagnosis || d.recommendedAction) {
+            <tr class="r-note-row">
+              <td></td>
+              <td colspan="6">
+                @if (d.diagnosis) { <span>{{ d.diagnosis }}</span> }
+                @if (d.recommendedAction) { <span class="r-action">→ {{ d.recommendedAction }}</span> }
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </section>
+
+  @if (a.pci; as pci) {
+    <section class="r-section r-keep">
+      <h2>{{ 'Índice de condición del pavimento' | t }}</h2>
+      <table>
+        <thead><tr><th>{{ 'Falla' | t }}</th><th>{{ 'Gravedad' | t }}</th><th class="num">{{ 'Cantidad' | t }}</th><th class="num">{{ 'Densidad' | t }}</th><th class="num">{{ 'VD' | t }}</th></tr></thead>
+        <tbody>
+          @for (e of pci.deducts; track $index) {
+            <tr>
+              <td>{{ deduct(e) }}</td>
+              <td>{{ (e.severity === 'High' ? 'Alta' : e.severity === 'Medium' ? 'Media' : 'Baja') | t }}</td>
+              <td class="num">{{ e.quantity | number: '1.2-2' }} {{ unit(e) }}</td>
+              <td class="num">{{ e.densityPct | number: '1.2-2' }} %</td>
+              <td class="num">{{ e.deductValue | number: '1.1-1' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      @if (pci.isPartial) {
+        <p class="r-small">{{ 'El área fotografiada ({a} m²) es menor que una unidad de muestreo. Las densidades se calculan sobre {u} m², así que el PCI es una cota superior.' | t: { a: (pci.surveyedAreaM2 | number: '1.1-1'), u: (pci.sampleUnitAreaM2 | number: '1.0-0') } }}</p>
+      }
+    </section>
+  }
+
+  @if (budget(); as b) {
+    <section class="r-section r-keep">
+      <h2>{{ 'Análisis de precios unitarios' | t }} <small>({{ b.currency }})</small></h2>
+      <table>
+        <thead><tr><th>{{ 'Ítem' | t }}</th><th>{{ 'Partida' | t }}</th><th class="num">{{ 'Metrado' | t }}</th><th class="num">P. U.</th><th class="num">{{ 'Parcial' | t }}</th></tr></thead>
+        <tbody>
+          @for (l of b.lines; track l.item) {
+            <tr>
+              <td class="code">{{ l.item }}</td>
+              <td>{{ l.description | t }}</td>
+              <td class="num">{{ l.quantity | number: '1.3-3' }} {{ l.unit }}</td>
+              <td class="num">{{ l.unitPrice | number: '1.2-2' }}</td>
+              <td class="num">{{ l.amount | number: '1.2-2' }}</td>
+            </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr><td colspan="4">{{ 'Costo directo' | t }}</td><td class="num">{{ b.directCost | number: '1.2-2' }}</td></tr>
+          <tr><td colspan="4">{{ 'Gastos generales (' | t }}{{ b.overheadPct }} %)</td><td class="num">{{ b.overhead | number: '1.2-2' }}</td></tr>
+          <tr><td colspan="4">{{ 'Utilidad (' | t }}{{ b.profitPct }} %)</td><td class="num">{{ b.profit | number: '1.2-2' }}</td></tr>
+          <tr><td colspan="4">{{ 'Subtotal' | t }}</td><td class="num">{{ b.subtotal | number: '1.2-2' }}</td></tr>
+          <tr><td colspan="4">{{ 'IGV (' | t }}{{ b.igvPct }} %)</td><td class="num">{{ b.igv | number: '1.2-2' }}</td></tr>
+          <tr class="r-grand"><td colspan="4">{{ 'Presupuesto total' | t }}</td><td class="num">{{ b.currency }} {{ b.total | number: '1.2-2' }}</td></tr>
+        </tfoot>
+      </table>
+      @if (b.assumedDepthCount > 0) {
+        <p class="r-small r-flag">{{ (b.assumedDepthCount === 1
+          ? '1 deterioro a parchar usa una profundidad supuesta según su severidad. Ingresa la profundidad medida en campo para cerrar el metrado.'
+          : '{n} deterioros a parchar usan una profundidad supuesta según su severidad. Ingresa la profundidad medida en campo para cerrar el metrado.') | t: { n: b.assumedDepthCount } }}</p>
+      }
+      <p class="r-small"><b>{{ 'Condiciones de obra ·' | t }} {{ b.region.name | t }}</b> ({{ '{n} m s. n. m.' | t: { n: (b.region.altitudeM | number: '1.0-0') } }}). {{ 'Ligante recomendado:' | t }} {{ b.region.recommendedBinder | t }}.</p>
+      <ul class="r-notes">
+        @for (n of b.region.notes; track n) { <li>{{ n | t }}</li> }
+        @for (n of b.notes; track n) { <li>{{ n | t }}</li> }
+      </ul>
+    </section>
+  }
+
+  @if (steps().length) {
+    <section class="r-section">
+      <h2>{{ 'Protocolo de mantenimiento' | t }}</h2>
+      <ol class="r-steps">
+        @for (s of steps(); track s.id) {
+          <li>
+            <div class="r-step-head">
+              <b>{{ s.title }}</b>
+              @if (s.targetCode) { <span class="code">{{ s.targetCode }}</span> }
+              <span class="r-risk">{{ 'Riesgo {r}' | t: { r: risk(s).toLowerCase() } }}</span>
+              <span class="r-check">{{ s.completedAt ? '☑' : '☐' }}</span>
+            </div>
+            <p>{{ s.instructions }}</p>
+            @if (s.tools.length) { <p class="r-tools">{{ s.tools.join(' · ') }}</p> }
+          </li>
+        }
+      </ol>
+    </section>
+  }
+
+  <footer class="r-foot">
+    <p>
+      {{ 'Segmentación' | t }}: {{ a.segmentationModel ?? '—' }} · {{ 'Razonamiento' | t }}: {{ a.reasoningModel ?? '—' }}.
+      {{ 'El PCI, los metrados y el presupuesto se calculan con fórmulas deterministas (ASTM D6433, partidas MTC); el modelo de lenguaje no fija ninguna cifra.' | t }}
+      {{ 'Precios referenciales: reemplázalos con el análisis de precios de la entidad.' | t }}
+    </p>
+    <p>{{ 'Generado por PaveLens AI el {date}.' | t: { date: (printedAt | date: 'd MMM y, HH:mm') } }}</p>
+    <div class="r-signs">
+      <span>{{ 'Inspector' | t }}</span>
+      <span>{{ 'Revisó' | t }}</span>
+    </div>
+  </footer>
+</article>

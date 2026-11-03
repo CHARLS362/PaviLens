@@ -1,0 +1,722 @@
+<div class="shell">
+  <a class="skip-link" href="#main" (click)="skipToMain($event)">{{ 'Saltar al contenido principal' | t }}</a>
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="wordmark">
+      <svg class="wordmark-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="1" y="1" width="22" height="22" rx="4" />
+        <path d="M8 20L10.5 4M16 20L13.5 4" />
+        <path d="M12 6.5v2.5M12 12v2.5M12 17.5v2" class="lane" />
+      </svg>
+      <span class="wordmark-name">PaveLens</span>
+      <span class="wordmark-sep" aria-hidden="true"></span>
+      <span class="wordmark-context">{{ 'Evaluación de pavimentos flexibles' | t }}</span>
+    </div>
+
+    <nav class="topnav" [attr.aria-label]="'Módulos' | t">
+      <button [class.active]="module() === 'inspections'" [attr.aria-current]="module() === 'inspections' ? 'page' : null" (click)="module.set('inspections')">{{ 'Inspecciones' | t }}</button>
+      <button [class.active]="module() === 'planner'" [attr.aria-current]="module() === 'planner' ? 'page' : null" [disabled]="!network()" (click)="openPlanner()">{{ 'Planificación de desvíos' | t }}</button>
+    </nav>
+
+    <div class="topbar-actions">
+      @if (aiStatus(); as ai) {
+        @if (ai.provider === 'Meta') {
+          <span class="model-status" [class.warn]="!ai.segmentation?.keyConfigured || !ai.reasoning?.keyConfigured"
+            [title]="'Segmentación: {sm} vía {sh} · Razonamiento: {rm} vía {rh}. Las claves se guardan solo en el servidor.' | t: { sm: ai.segmentation?.model, sh: ai.segmentation?.host, rm: ai.reasoning?.model, rh: ai.reasoning?.host }">
+            <span class="dot" aria-hidden="true"></span>{{ ai.segmentation?.name }} · {{ ai.reasoning?.name }}
+            <span class="sr-only">
+              {{ (!ai.segmentation?.keyConfigured || !ai.reasoning?.keyConfigured ? '. Falta configurar una clave en el servidor' : '. Modelos de IA activos') | t }}
+            </span>
+          </span>
+        } @else {
+          <span class="model-status sim" [title]="'Ai:Provider = Simulation. Configura las claves de Roboflow (SAM 3) y de la API de Meta (Muse Wonder) en el servidor para usar los modelos reales.' | t">
+            <span class="dot" aria-hidden="true"></span>{{ 'Modo demostración' | t }}
+            <span class="sr-only">{{ ': los resultados son simulados, sin modelos de IA reales' | t }}</span>
+          </span>
+        }
+      }
+      <div class="lang-toggle" role="group" [attr.aria-label]="'Idioma de la interfaz y de los informes' | t">
+        <button [class.active]="i18n.lang() === 'es'" [attr.aria-pressed]="i18n.lang() === 'es'" lang="es" (click)="i18n.set('es')">ES</button>
+        <button [class.active]="i18n.lang() === 'en'" [attr.aria-pressed]="i18n.lang() === 'en'" lang="en" (click)="i18n.set('en')">EN</button>
+      </div>
+      <span class="api-status" [class.online]="backendOnline()" [title]="(backendOnline() ? 'API v1 y base de datos conectadas' : 'Sin respuesta de la API') | t">
+        <span class="dot" aria-hidden="true"></span>{{ (backendOnline() ? 'Conectado' : 'Sin conexión') | t }}
+      </span>
+      <button class="btn btn-primary" (click)="openUpload()" [disabled]="isUploading()">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+        {{ 'Nueva inspección' | t }}
+      </button>
+    </div>
+  </header>
+
+  @if (module() === 'planner' && network(); as net) {
+    <main id="main" tabindex="-1" class="workspace planner-view">
+      <app-traffic-planner [network]="net" [initialSegment]="plannerSegment()" [inspectedSegment]="selectedAnalysis()?.roadSegmentId ?? null" />
+    </main>
+  } @else {
+  <main id="main" tabindex="-1" class="workspace">
+    <!-- LEFT: INSPECTIONS -->
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <h2>{{ 'Inspecciones' | t }}</h2>
+        <span class="count-badge">{{ analyses().length }}</span>
+      </div>
+
+      <div class="inspection-list">
+        @for (item of analyses(); track item.id) {
+          <button class="inspection-row" [class.active]="selectedAnalysis()?.id === item.id" (click)="selectAnalysis(item)">
+            <img class="inspection-thumb" [src]="item.imageUrl" alt="" />
+            <span class="inspection-info">
+              <span class="inspection-title">{{ item.title }}</span>
+              <span class="inspection-meta">
+                @if (isRunning(item.status)) {
+                  <span class="status-text">{{ statusLabel(item.status) }}…</span>
+                } @else if (item.status === 'Failed') {
+                  <span class="status-text failed">{{ 'Falló' | t }}</span>
+                } @else {
+                  {{ (item.distressCount === 1 ? '1 deterioro' : '{n} deterioros') | t: { n: item.distressCount } }} ·
+                  {{ (item.potholeCount === 1 ? '1 bache' : '{n} baches') | t: { n: item.potholeCount } }}
+                }
+              </span>
+              <span class="inspection-date">
+                {{ item.createdAt | date:'d MMM, HH:mm' }}
+                @if (item.engine === 'Simulation') {
+                  <span class="sim-chip" [title]="'Resultado de los escenarios de demostración' | t">{{ 'Simulación' | t }}</span>
+                }
+              </span>
+            </span>
+            <span class="pci-chip" [ngClass]="pciClass(item.pci)" [title]="item.pci != null ? 'PCI ' + (item.pci | number:'1.0-0') : ('Sin PCI' | t)">
+              {{ item.pci != null ? (item.pci | number:'1.0-0') : '—' }}
+            </span>
+          </button>
+        } @empty {
+          <div class="empty-list">
+            @if (isLoading()) {
+              <p>{{ 'Cargando inspecciones…' | t }}</p>
+            } @else {
+              <p>{{ 'No hay inspecciones registradas.' | t }}</p>
+              <button class="btn btn-secondary btn-sm" (click)="loadAnalyses()">{{ 'Reintentar conexión' | t }}</button>
+            }
+          </div>
+        }
+      </div>
+    </aside>
+
+    <!-- CENTER: PHOTO + MEASUREMENTS -->
+    <section class="main">
+      @if (selectedAnalysis(); as current) {
+        <div class="main-head">
+          <div class="title-block">
+            <h1>{{ current.title }}</h1>
+            <div class="meta-line">
+              @if (current.location) { <span>{{ current.location }}</span> }
+              @if (current.roadSegmentId) { <span>{{ 'Tramo' | t }} {{ current.roadSegmentId }}</span> }
+              @if (current.calibration; as cal) {
+                <span [title]="'Proyección por homografía de 4 puntos' | t">{{ 'Calibración' | t }} {{ cal.widthM }} × {{ cal.lengthM }} m</span>
+              } @else {
+                <span [title]="'Foto cenital escalada por el ancho visible' | t">{{ 'Cenital · ancho' | t }} {{ current.referenceWidthM }} m</span>
+              }
+              @if (current.engine === 'Meta') {
+                <span>{{ current.segmentationModel }} · {{ current.reasoningModel }}</span>
+              }
+              @if (current.processingTimeMs != null) { <span>{{ current.processingTimeMs }} ms</span> }
+              @if (current.language && current.language.toLowerCase() !== i18n.lang()) {
+                <span class="report-lang" [title]="'Los textos de la IA se redactaron al crear la inspección; las nuevas usan el idioma elegido.' | t">
+                  {{ (current.language === 'En' ? 'Informe en inglés' : 'Informe en español') | t }}
+                </span>
+              }
+            </div>
+          </div>
+          <div class="head-actions">
+            @if (current.engine === 'Simulation') {
+              <span class="sim-banner" [title]="'Ai:Provider = Simulation. Configura Meta para usar SAM 3 y Muse Wonder reales.' | t">{{ 'Datos de simulación' | t }}</span>
+            }
+            @if (current.status === 'Completed') {
+              <button class="btn btn-secondary btn-sm" (click)="printReport()" [disabled]="isPreparingPrint()" [title]="'Abre el diálogo de impresión; elige «Guardar como PDF».' | t">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6V2h8v4M4 12H2.5V6.5h11V12H12M4 9.5h8V14H4z" /></svg>
+                {{ (isPreparingPrint() ? 'Preparando…' : 'Expediente PDF') | t }}
+              </button>
+            }
+            <button class="btn btn-text danger" (click)="askDelete()" [disabled]="isRunning(current.status)">{{ 'Eliminar' | t }}</button>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi kpi-pci" [ngClass]="pciClass(current.pci?.pci)">
+            <span class="kpi-label">PCI{{ current.pci?.isPartial ? (' (parcial)' | t) : '' }}</span>
+            <span class="kpi-value">
+              {{ current.pci ? (current.pci.pci | number:'1.0-0') : '—' }}
+              @if (current.pci) { <span class="kpi-rating">{{ current.pci.rating | t }}</span> }
+            </span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">{{ 'Deterioros' | t }}</span>
+            <span class="kpi-value">{{ counts().total }}</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">{{ 'Baches' | t }}</span>
+            <span class="kpi-value">{{ counts().potholes }}</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">{{ 'Área afectada' | t }}</span>
+            <span class="kpi-value">{{ affectedAreaM2() | number:'1.2-2' }}<small>m²</small></span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">{{ 'Mezcla asfáltica' | t }}</span>
+            <span class="kpi-value">{{ counts().massT | number:'1.2-2' }}<small>t</small></span>
+          </div>
+        </div>
+
+        <div class="viewer">
+          <div
+            #canvas
+            class="viewer-canvas"
+            [class.zoomed]="view().s > 1"
+            [class.panning]="isPanning()"
+            (wheel)="onViewerWheel($event)"
+            (mousedown)="onViewerDown($event)"
+            (mousemove)="onViewerMove($event)"
+            (mouseup)="onViewerUp()"
+            (mouseleave)="onViewerUp(); pointer.set(null)"
+            (touchstart)="onViewerTouchStart($event)"
+            (touchmove)="onViewerTouchMove($event)"
+            (touchend)="onViewerTouchEnd($event)"
+            (touchcancel)="onViewerTouchEnd($event)"
+            (dblclick)="resetView()">
+            <div
+              class="stage"
+              [class.flying]="isFlying()"
+              [style.transform]="'translate(' + view().x + 'px, ' + view().y + 'px) scale(' + view().s + ')'"
+              [style.--inv]="1 / view().s"
+              (mousemove)="onStageMove($event)"
+              (mouseleave)="cursor.set(null)">
+              <img [src]="current.image.url" [alt]="'Fotografía del pavimento inspeccionado' | t" class="stage-image" />
+
+              <svg class="overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+                @if (current.calibration && showCalibration()) {
+                  <polygon class="calib" [attr.points]="calibrationPoints(current)" />
+                }
+                @for (d of visibleDistresses(); track d.id) {
+                  <g
+                    class="mask"
+                    [ngClass]="severityClass(d.severity)"
+                    [class.crack]="isCrack(d.type)"
+                    [class.selected]="selectedDistress()?.id === d.id"
+                    [class.hovered]="hoveredDistressId() === d.id"
+                    (click)="pickOnPhoto(d)"
+                    (mouseenter)="hoveredDistressId.set(d.id)"
+                    (mouseleave)="hoveredDistressId.set(null)">
+                    <polygon class="mask-halo" [attr.points]="polygonPoints(d)" />
+                    <polygon class="mask-shape" [attr.points]="polygonPoints(d)" />
+                  </g>
+                }
+              </svg>
+
+              @if (showLabels()) {
+                @for (d of visibleDistresses(); track d.id) {
+                  <button
+                    class="label"
+                    [ngClass]="severityClass(d.severity)"
+                    [class.selected]="selectedDistress()?.id === d.id"
+                    [class.hovered]="hoveredDistressId() === d.id"
+                    [style.left.%]="d.box.x * 100"
+                    [style.top.%]="d.box.y * 100"
+                    (click)="pickOnPhoto(d)"
+                    (mouseenter)="hoveredDistressId.set(d.id)"
+                    (mouseleave)="hoveredDistressId.set(null)">
+                    {{ d.code }}
+                  </button>
+                }
+              }
+
+              @if (scaleBar(); as bar) {
+                <div class="scale-bar" [style.width.%]="bar.pct">
+                  <span>{{ bar.metres }} m</span>
+                </div>
+              }
+
+              @if (isLoadingDetail()) {
+                <div class="stage-status">{{ 'Cargando segmentación…' | t }}</div>
+              }
+
+              @if (current.status === 'Failed') {
+                <div class="stage-failure">
+                  <strong>{{ 'El análisis falló (intento {n})' | t: { n: current.attempts } }}</strong>
+                  <p>{{ current.failureReason | t }}</p>
+                  <button class="btn btn-primary btn-sm" (click)="retryAnalysis()">{{ 'Reintentar análisis' | t }}</button>
+                </div>
+              }
+            </div>
+            @if (maskTip(); as tip) {
+              <div class="mask-tip" [class.flip]="tip.flip" [style.left.px]="tip.x" [style.top.px]="tip.y" aria-hidden="true">
+                <strong>{{ tip.d.code }}</strong> {{ typeLabel(tip.d.type) }}
+                <span class="mask-tip-meta">
+                  <span class="sev-tag" [ngClass]="severityClass(tip.d.severity)">{{ severityLabel(tip.d.severity) }}</span>
+                  {{ isCrack(tip.d.type) ? (tip.d.measurement.lengthM | number:'1.2-2') + ' m' : (tip.d.measurement.areaM2 | number:'1.2-2') + ' m²' }}
+                </span>
+              </div>
+            }
+            @if (current.status === 'Completed') {
+              <span class="viewer-stamp" [class.sim]="isSimulation()">
+                {{ isSimulation() ? ('Máscaras simuladas · sin SAM 3' | t) : ('Segmentado por Meta {model}' | t: { model: current.segmentationModel ?? 'SAM 3' }) }}
+              </span>
+            }
+          </div>
+
+          <div class="viewer-bar">
+            <div class="legend">
+              <span class="legend-title">{{ 'Severidad' | t }}</span>
+              <span class="legend-item sev-high"><span class="swatch"></span>{{ 'Alta' | t }}</span>
+              <span class="legend-item sev-medium"><span class="swatch"></span>{{ 'Media' | t }}</span>
+              <span class="legend-item sev-low"><span class="swatch"></span>{{ 'Baja' | t }}</span>
+            </div>
+            <div class="layer-toggles">
+              <label class="check"><input type="checkbox" [checked]="showCracks()" (change)="showCracks.set(!showCracks())" />{{ 'Fisuras' | t }}</label>
+              <label class="check"><input type="checkbox" [checked]="showLabels()" (change)="showLabels.set(!showLabels())" />{{ 'Etiquetas' | t }}</label>
+              @if (current.calibration) {
+                <label class="check"><input type="checkbox" [checked]="showCalibration()" (change)="showCalibration.set(!showCalibration())" />{{ 'Calibración' | t }}</label>
+              }
+            </div>
+            <div class="zoom-controls">
+              <button class="icon-btn" [attr.aria-label]="'Alejar' | t" (click)="zoomBy(1 / 1.5, canvas)" [disabled]="view().s === 1">−</button>
+              <button class="zoom-level" [title]="'Restablecer (doble clic en la foto)' | t" (click)="resetView()">{{ view().s * 100 | number:'1.0-0' }} %</button>
+              <button class="icon-btn" [attr.aria-label]="'Acercar' | t" (click)="zoomBy(1.5, canvas)">+</button>
+            </div>
+            <span class="cursor-readout" [title]="'Posición del cursor sobre la calzada' | t">
+              @if (cursorGround(); as p) {
+                x {{ p[0] | number:'1.2-2' }} m · y {{ p[1] | number:'1.2-2' }} m
+              } @else {
+                x — · y —
+              }
+            </span>
+          </div>
+        </div>
+      } @else if (!isAnalyzing()) {
+        <div class="empty-main">
+          <h2>{{ 'Sin inspección seleccionada' | t }}</h2>
+          <p>{{ 'Sube una foto del pavimento. SAM 3 delimita cada deterioro y PaveLens lo mide en metros para calcular el PCI, el metrado y el presupuesto.' | t }}</p>
+          <button class="btn btn-primary" (click)="openUpload()">{{ 'Nueva inspección' | t }}</button>
+        </div>
+      }
+
+      @if (isAnalyzing()) {
+        <div class="processing">
+          <div class="processing-card">
+            @if (selectedAnalysis()?.image?.url; as src) {
+              <img [src]="src" alt="" />
+            }
+            <div class="processing-body">
+              <h3>{{ 'Analizando la fotografía' | t }}</h3>
+              <ol class="stages">
+                @for (stage of pipelineStages; track stage; let i = $index) {
+                  <li [class.done]="i < pipelineStage()" [class.current]="i === pipelineStage()">{{ stage | t }}</li>
+                }
+              </ol>
+            </div>
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- RIGHT: INSPECTOR -->
+    <aside class="inspector">
+      @if (selectedAnalysis(); as current) {
+        <nav class="tabs" role="tablist" [attr.aria-label]="'Secciones de la inspección' | t" (keydown)="onTabKey($event)">
+          <button role="tab" id="tab-distress" [class.active]="activeTab() === 'distress'" [attr.aria-selected]="activeTab() === 'distress'" [attr.tabindex]="activeTab() === 'distress' ? 0 : -1" (click)="setTab('distress')">{{ 'Evaluación' | t }}</button>
+          <button role="tab" id="tab-budget" [class.active]="activeTab() === 'budget'" [attr.aria-selected]="activeTab() === 'budget'" [attr.tabindex]="activeTab() === 'budget' ? 0 : -1" (click)="setTab('budget')">{{ 'Presupuesto' | t }}</button>
+          <button role="tab" id="tab-traffic" [class.active]="activeTab() === 'traffic'" [attr.aria-selected]="activeTab() === 'traffic'" [attr.tabindex]="activeTab() === 'traffic' ? 0 : -1" (click)="setTab('traffic')">{{ 'Tránsito' | t }}</button>
+          <button role="tab" id="tab-steps" [class.active]="activeTab() === 'steps'" [attr.aria-selected]="activeTab() === 'steps'" [attr.tabindex]="activeTab() === 'steps' ? 0 : -1" (click)="setTab('steps')">
+            {{ 'Protocolo' | t }} <span class="tab-count">{{ completedSteps() }}/{{ sortedSteps().length }}</span>
+          </button>
+        </nav>
+
+        <!-- ===== EVALUATION ===== -->
+        @if (activeTab() === 'distress') {
+          <div class="inspector-body">
+            <section class="section">
+              <h3 class="section-title">{{ 'Diagnóstico del tramo' | t }} <span class="source">{{ source('reasoning') }}</span></h3>
+              <p class="prose">{{ current.summary ?? ((isRunning(current.status) ? 'Analizando…' : 'Sin diagnóstico.') | t) }}</p>
+            </section>
+
+            @if (current.trace; as t) {
+              <section class="section">
+                <h3 class="section-title">{{ 'Pipeline Meta AI' | t }} <span class="source">{{ (isSimulation() ? 'Simulación · sin llamadas a Meta' : 'Modelos Meta') | t }}</span></h3>
+                <ol class="trace">
+                  <li>
+                    <div class="trace-head">
+                      <span class="trace-step">{{ 'Segmentación' | t }}</span>
+                      <span class="trace-model">{{ current.segmentationModel ?? 'SAM 3' }}</span>
+                      <span class="trace-ms">{{ t.segmentationMs | number:'1.0-0' }} ms</span>
+                    </div>
+                    <p class="trace-note">{{ 'Conceptos de texto enviados a SAM 3 y máscaras devueltas:' | t }}</p>
+                    <div class="chips">
+                      @for (c of t.concepts; track c.concept) {
+                        <span class="chip" [class.empty]="c.masks === 0">{{ c.concept }} <b>{{ c.masks }}</b></span>
+                      }
+                    </div>
+                  </li>
+                  <li>
+                    <div class="trace-head">
+                      <span class="trace-step">{{ 'Medición' | t }}</span>
+                      <span class="trace-model">{{ (current.calibration ? 'Homografía de 4 puntos' : 'Escala por ancho visible') | t }}</span>
+                      <span class="calc-badge">{{ 'código' | t }}</span>
+                    </div>
+                    <p class="trace-note">{{ 'Cada máscara se proyecta al plano de la calzada y se mide en metros.' | t }}</p>
+                  </li>
+                  <li>
+                    <div class="trace-head">
+                      <span class="trace-step">{{ 'Razonamiento' | t }}</span>
+                      <span class="trace-model">{{ current.reasoningModel ?? 'Muse Wonder' }}</span>
+                      <span class="trace-ms">{{ t.reasoningMs | number:'1.0-0' }} ms</span>
+                    </div>
+                    <p class="trace-note">
+                      {{ 'Clasifica, gradúa la severidad y redacta el protocolo.' | t }}
+                      {{ (t.reasoningAttempts > 1
+                        ? 'Respuesta corregida tras {n} intentos (autorreparación del JSON).'
+                        : 'JSON válido al primer intento.') | t: { n: t.reasoningAttempts } }}
+                    </p>
+                  </li>
+                  <li>
+                    <div class="trace-head">
+                      <span class="trace-step">{{ 'Cálculo' | t }}</span>
+                      <span class="trace-model">{{ 'PCI · metrado · APU' | t }}</span>
+                      <span class="calc-badge">{{ 'código' | t }}</span>
+                    </div>
+                    <p class="trace-note">{{ 'Los números salen de fórmulas deterministas, no del modelo de lenguaje.' | t }}</p>
+                  </li>
+                </ol>
+                @if (t.skippedBeyondHorizon) {
+                  <p class="callout">
+                    {{ (t.skippedBeyondHorizon === 1
+                      ? '1 máscara quedó más allá del horizonte de la calibración: no se midió ni cuenta en el PCI.'
+                      : '{n} máscaras quedaron más allá del horizonte de la calibración: no se midieron ni cuentan en el PCI.') | t: { n: t.skippedBeyondHorizon } }}
+                  </p>
+                }
+              </section>
+            }
+
+            @if (current.pci; as pci) {
+              <section class="section">
+                <h3 class="section-title">{{ 'Índice de condición del pavimento' | t }} <span class="source">ASTM D6433 <span class="calc-badge" [title]="'Calculado por código a partir de las áreas medidas; Muse Wonder no fija este número.' | t">{{ 'código' | t }}</span></span></h3>
+                <div class="pci-summary" [ngClass]="pciClass(pci.pci)">
+                  <span class="pci-number">{{ pci.pci | number:'1.0-0' }}</span>
+                  <div>
+                    <div class="pci-rating">{{ pci.rating | t }}</div>
+                    <div class="pci-treatment">{{ pci.treatment | t }}</div>
+                  </div>
+                </div>
+                <div class="pci-scale" aria-hidden="true">
+                  <span class="band pci-e"></span><span class="band pci-d"></span><span class="band pci-c"></span><span class="band pci-b"></span><span class="band pci-a"></span>
+                  <span class="marker" [style.left.%]="pci.pci"></span>
+                </div>
+                <div class="pci-scale-labels"><span>0</span><span>40</span><span>55</span><span>70</span><span>85</span><span>100</span></div>
+                @if (pci.isPartial) {
+                  <p class="callout">
+                    {{ 'El área fotografiada ({a} m²) es menor que una unidad de muestreo. Las densidades se calculan sobre {u} m², así que el PCI es una cota superior.' | t: { a: (pci.surveyedAreaM2 | number:'1.0-1'), u: pci.sampleUnitAreaM2 } }}
+                  </p>
+                }
+                @if (pci.deducts.length) {
+                  <table class="table">
+                    <thead>
+                      <tr><th>{{ 'Falla' | t }}</th><th>{{ 'Gravedad' | t }}</th><th class="num">{{ 'Cantidad' | t }}</th><th class="num">{{ 'Densidad' | t }}</th><th class="num">{{ 'VD' | t }}</th></tr>
+                    </thead>
+                    <tbody>
+                      @for (e of pci.deducts; track $index) {
+                        <tr>
+                          <td>{{ deductLabel(e) }}</td>
+                          <td><span class="sev-tag" [ngClass]="severityClass(e.severity)">{{ severityLabel(e.severity) }}</span></td>
+                          <td class="num">{{ e.quantity | number:'1.0-2' }} {{ unitLabel(e) }}</td>
+                          <td class="num">{{ e.densityPct | number:'1.2-2' }} %</td>
+                          <td class="num">{{ e.deductValue | number:'1.1-1' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                  <p class="footnote">{{ 'm = {m} · CDV máx. {cdv} tras {n} iteraciones' | t: { m: (pci.maxAllowedDeducts | number:'1.1-1'), cdv: ((100 - pci.pci) | number:'1.1-1'), n: pci.iterations.length } }}</p>
+                }
+              </section>
+            }
+
+            @if (selectedDistress(); as d) {
+              <section class="section distress-card" [ngClass]="severityClass(d.severity)">
+                <header class="distress-head">
+                  <span class="distress-code">{{ d.code }}</span>
+                  <div class="distress-id">
+                    <span class="distress-type">{{ typeLabel(d.type) }}</span>
+                    <span class="distress-sub">{{ 'Severidad {s}' | t: { s: (severityLabel(d.severity) | lowercase) } }}{{ d.rddCode ? ' · RDD ' + d.rddCode : '' }} · {{ 'confianza {c} %' | t: { c: ((d.confidence * 100) | number:'1.0-0') } }}</span>
+                  </div>
+                </header>
+
+                <dl class="facts">
+                  <dt>{{ 'Área' | t }}</dt><dd>{{ d.measurement.areaM2 | number:'1.3-3' }} m²</dd>
+                  <dt>{{ 'Largo × ancho' | t }}</dt><dd>{{ d.measurement.lengthM | number:'1.2-2' }} × {{ d.measurement.widthM | number:'1.2-2' }} m</dd>
+                  <dt>{{ 'Perímetro' | t }}</dt><dd>{{ d.measurement.perimeterM | number:'1.2-2' }} m</dd>
+                  <dt>{{ 'Orientación' | t }}</dt><dd>{{ d.measurement.orientationDeg | number:'1.0-0' }}° · {{ orientationLabel(d.measurement.orientationDeg) }}</dd>
+                  <dt>{{ 'Excentricidad' | t }}</dt><dd>{{ d.measurement.eccentricity | number:'1.2-2' }}</dd>
+                  <dt>{{ 'Contorno' | t }}</dt><dd>{{ d.maskVertexCountRaw }} {{ 'vértices' | t }}</dd>
+                </dl>
+
+                @if (d.quantities; as q) {
+                  <h4 class="subhead">{{ 'Metrado de bacheo' | t }}</h4>
+                  <dl class="facts">
+                    <dt>{{ 'Profundidad' | t }}</dt>
+                    <dd>
+                      {{ q.depthM * 100 | number:'1.1-1' }} cm
+                      <span class="depth-src" [class.measured]="q.depthSource === 'Measured'">{{ (q.depthSource === 'Measured' ? 'medida' : 'supuesta') | t }}</span>
+                    </dd>
+                    <dt>{{ 'Área de corte' | t }}</dt><dd>{{ q.cutAreaM2 | number:'1.3-3' }} m²</dd>
+                    <dt>{{ 'Volumen' | t }}</dt><dd>{{ q.volumeM3 | number:'1.4-4' }} m³</dd>
+                    <dt>{{ 'Mezcla en caliente' | t }}</dt><dd>{{ q.massT | number:'1.3-3' }} t</dd>
+                  </dl>
+                  <div class="inline-form">
+                    <label for="depth-input">{{ 'Profundidad medida en campo' | t }}</label>
+                    <div class="input-group">
+                      <input
+                        id="depth-input"
+                        type="number"
+                        min="0.5"
+                        max="50"
+                        step="0.5"
+                        [ngModel]="depthCm()"
+                        (ngModelChange)="depthCm.set($event)"
+                        (keyup.enter)="saveDepth()" />
+                      <span class="input-suffix">cm</span>
+                      <button class="btn btn-secondary btn-sm" [disabled]="isSavingDepth() || depthCm() == null" (click)="saveDepth()">
+                        {{ (isSavingDepth() ? 'Guardando…' : 'Aplicar') | t }}
+                      </button>
+                    </div>
+                  </div>
+                } @else {
+                  <p class="footnote">{{ 'Las fisuras se sellan por metro lineal; no requieren mezcla.' | t }}</p>
+                }
+
+                @if (d.diagnosis) {
+                  <h4 class="subhead">{{ 'Hallazgo' | t }} <span class="source">· {{ source('reasoning') }}</span></h4>
+                  <p class="prose">{{ d.diagnosis }}</p>
+                }
+                @if (d.recommendedAction) {
+                  <h4 class="subhead">{{ 'Intervención recomendada' | t }} <span class="source">· {{ source('reasoning') }}</span></h4>
+                  <p class="prose emphasis">{{ d.recommendedAction }}</p>
+                }
+              </section>
+
+              <section class="section">
+                <h3 class="section-title">{{ 'Consulta técnica sobre' | t }} {{ d.code }} <span class="source">{{ source('reasoning') }}</span></h3>
+                @if (messages().length || pendingQuestion()) {
+                  <div class="thread">
+                    @for (m of messages(); track m.id) {
+                      <div class="msg" [class.user]="m.role === 'User'">{{ m.role === 'User' ? m.content : plain(m.content) }}</div>
+                    }
+                    @if (pendingQuestion(); as q) {
+                      <div class="msg user">{{ q }}</div>
+                      <div class="msg pending">{{ 'Redactando respuesta…' | t }}</div>
+                    }
+                  </div>
+                }
+                <div class="input-group">
+                  <input
+                    type="text"
+                    [attr.aria-label]="'Pregunta sobre el deterioro seleccionado' | t"
+                    [placeholder]="'¿Se puede parchar con helada nocturna?' | t"
+                    [ngModel]="userQuestion()"
+                    (ngModelChange)="userQuestion.set($event)"
+                    (keyup.enter)="askAssistant()" />
+                  <button class="btn btn-secondary btn-sm" [disabled]="isAsking() || !userQuestion()" (click)="askAssistant()">{{ 'Preguntar' | t }}</button>
+                </div>
+              </section>
+            }
+
+            <section class="section">
+              <h3 class="section-title">{{ 'Registro de deterioros' | t }} <span class="source">{{ current.distresses.length }}</span></h3>
+              <table class="table selectable">
+                <thead><tr><th>{{ 'Código' | t }}</th><th>{{ 'Tipo' | t }}</th><th>{{ 'Gravedad' | t }}</th><th class="num">{{ 'Medida' | t }}</th></tr></thead>
+                <tbody>
+                  @for (d of current.distresses; track d.id) {
+                    <tr
+                      [class.selected]="selectedDistress()?.id === d.id"
+                      [class.hovered]="hoveredDistressId() === d.id"
+                      (click)="showOnPhoto(d)"
+                      (mouseenter)="hoveredDistressId.set(d.id)"
+                      (mouseleave)="hoveredDistressId.set(null)">
+                      <td class="code"><button class="row-btn" [attr.aria-label]="'Ver {code} en la foto' | t: { code: d.code }" [attr.aria-pressed]="selectedDistress()?.id === d.id" (click)="$event.stopPropagation(); showOnPhoto(d)">{{ d.code }}</button></td>
+                      <td>{{ typeLabel(d.type) }}</td>
+                      <td><span class="sev-tag" [ngClass]="severityClass(d.severity)">{{ severityLabel(d.severity) }}</span></td>
+                      <td class="num">{{ isCrack(d.type) ? (d.measurement.lengthM | number:'1.2-2') + ' m' : (d.measurement.areaM2 | number:'1.2-2') + ' m²' }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="4" class="muted">{{ (isLoadingDetail() || isRunning(current.status) ? 'Analizando…' : 'Sin deterioros detectados.') | t }}</td></tr>
+                  }
+                </tbody>
+              </table>
+            </section>
+          </div>
+        }
+
+        <!-- ===== BUDGET ===== -->
+        @if (activeTab() === 'budget') {
+          <div class="inspector-body">
+            @if (current.status !== 'Completed') {
+              <p class="muted">{{ 'El presupuesto se calcula cuando termina el análisis.' | t }}</p>
+            } @else if (budget(); as b) {
+              <section class="section">
+                <h3 class="section-title">{{ 'Análisis de precios unitarios' | t }} <span class="source">{{ b.currency }} <span class="calc-badge" [title]="'Metrados y precios calculados por código; Muse Wonder no fija estos montos.' | t">{{ 'código' | t }}</span></span></h3>
+                <table class="table">
+                  <thead>
+                    <tr><th>{{ 'Ítem' | t }}</th><th>{{ 'Partida' | t }}</th><th class="num">{{ 'Metrado' | t }}</th><th class="num">P. U.</th><th class="num">{{ 'Parcial' | t }}</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (line of b.lines; track line.item) {
+                      <tr>
+                        <td class="code">{{ line.item }}</td>
+                        <td class="wrap">{{ line.description | t }}</td>
+                        <td class="num">{{ line.quantity | number:'1.2-3' }} {{ line.unit }}</td>
+                        <td class="num">{{ line.unitPrice | number:'1.2-2' }}</td>
+                        <td class="num">{{ line.amount | number:'1.2-2' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="5" class="muted">{{ 'Sin partidas: no hay deterioros que intervenir.' | t }}</td></tr>
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr><td colspan="4">{{ 'Costo directo' | t }}</td><td class="num">{{ b.directCost | number:'1.2-2' }}</td></tr>
+                    <tr><td colspan="4">{{ 'Gastos generales (' | t }}{{ b.overheadPct }} %)</td><td class="num">{{ b.overhead | number:'1.2-2' }}</td></tr>
+                    <tr><td colspan="4">{{ 'Utilidad (' | t }}{{ b.profitPct }} %)</td><td class="num">{{ b.profit | number:'1.2-2' }}</td></tr>
+                    <tr><td colspan="4">{{ 'Subtotal' | t }}</td><td class="num">{{ b.subtotal | number:'1.2-2' }}</td></tr>
+                    <tr><td colspan="4">{{ 'IGV (' | t }}{{ b.igvPct }} %)</td><td class="num">{{ b.igv | number:'1.2-2' }}</td></tr>
+                    <tr class="total"><td colspan="4">{{ 'Presupuesto total' | t }}</td><td class="num">{{ b.currency }} {{ b.total | number:'1.2-2' }}</td></tr>
+                  </tfoot>
+                </table>
+                @if (b.assumedDepthCount) {
+                  <p class="callout">
+                    {{ (b.assumedDepthCount === 1
+                      ? '1 deterioro a parchar usa una profundidad supuesta según su severidad. Ingresa la profundidad medida en campo para cerrar el metrado.'
+                      : '{n} deterioros a parchar usan una profundidad supuesta según su severidad. Ingresa la profundidad medida en campo para cerrar el metrado.') | t: { n: b.assumedDepthCount } }}
+                  </p>
+                }
+              </section>
+
+              <section class="section">
+                <h3 class="section-title">{{ 'Condiciones de obra ·' | t }} {{ b.region.name | t }} <span class="source">{{ '{n} m s. n. m.' | t: { n: (b.region.altitudeM | number:'1.0-0') } }}</span></h3>
+                <p class="prose">{{ 'Ligante recomendado:' | t }} <strong>{{ b.region.recommendedBinder | t }}</strong></p>
+                <ul class="notes">
+                  @for (n of b.region.notes; track n) { <li>{{ n | t }}</li> }
+                  @for (n of b.notes; track n) { <li class="muted">{{ n | t }}</li> }
+                </ul>
+              </section>
+            } @else {
+              <p class="muted">{{ (isLoadingBudget() ? 'Calculando presupuesto…' : 'Sin presupuesto.') | t }}</p>
+              @if (!isLoadingBudget()) {
+                <button class="btn btn-secondary btn-sm" (click)="loadBudget()">{{ 'Calcular' | t }}</button>
+              }
+            }
+          </div>
+        }
+
+        <!-- ===== TRAFFIC ===== -->
+        @if (activeTab() === 'traffic') {
+          <div class="inspector-body">
+            <section class="section">
+              <h3 class="section-title">{{ 'Cierre para la reparación' | t }} <span class="source">{{ 'BPR · equilibrio de Wardrop' | t }}</span></h3>
+              @if (inspectionSegment(); as seg) {
+                <div class="traffic-teaser">
+                  <div class="tt-row"><span class="code">{{ seg.id }}</span> <strong>{{ seg.name }}</strong></div>
+                  <p class="footnote">{{ (seg.lanesPerDirection === 1 ? '1 carril por sentido' : '{l} carriles por sentido') | t: { l: seg.lanesPerDirection } }} · {{ '{c} veh/h de capacidad · {m} m' | t: { c: (seg.lanesPerDirection * seg.capacityPerLaneVph | number:'1.0-0'), m: (seg.lengthKm * 1000 | number:'1.0-0') } }}</p>
+                  <p>{{ 'Simula el cierre de este tramo durante la obra: tramos que absorben el desvío, demora total, costo para los usuarios y la franja horaria que lo minimiza.' | t }}</p>
+                  <button class="btn btn-primary" (click)="openPlanner(seg.id)">{{ 'Planificar el cierre' | t }}</button>
+                </div>
+              } @else {
+                <p class="muted">{{ 'Esta inspección no está asignada a un tramo de la red. Puedes explorar cualquier tramo en el planificador.' | t }}</p>
+                <button class="btn btn-secondary btn-sm" [disabled]="!network()" (click)="openPlanner()">{{ 'Abrir planificador' | t }}</button>
+              }
+            </section>
+          </div>
+        }
+
+        <!-- ===== PROTOCOL ===== -->
+        @if (activeTab() === 'steps') {
+          <div class="inspector-body">
+            <section class="section">
+              <h3 class="section-title">{{ 'Protocolo de mantenimiento' | t }} <span class="source">{{ '{done} de {total}' | t: { done: completedSteps(), total: sortedSteps().length } }}</span></h3>
+              <div class="progress"><span class="progress-fill" [style.width.%]="sortedSteps().length ? completedSteps() / sortedSteps().length * 100 : 0"></span></div>
+            </section>
+
+            <ol class="steps">
+              @for (step of sortedSteps(); track step.id) {
+                <li class="step" [class.done]="!!step.completedAt">
+                  <button
+                    class="step-check"
+                    [attr.aria-pressed]="!!step.completedAt"
+                    [attr.aria-label]="(step.completedAt ? 'Marcar como pendiente' : 'Marcar como completado') | t"
+                    (click)="toggleStepComplete(step)">
+                    @if (step.completedAt) {
+                      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" /></svg>
+                    } @else {
+                      {{ step.order }}
+                    }
+                  </button>
+                  <div class="step-body">
+                    <div class="step-head">
+                      <h4>{{ step.title }}</h4>
+                      <span [class]="'risk risk-' + step.risk.toLowerCase()">{{ 'Riesgo {r}' | t: { r: (riskLabel(step.risk) | lowercase) } }}</span>
+                    </div>
+                    <p>{{ step.instructions }}</p>
+                    @if (step.tools.length) {
+                      <div class="tools">
+                        @for (tool of step.tools; track tool) { <span class="tool">{{ tool }}</span> }
+                      </div>
+                    }
+                    @if (distressForStep(step); as target) {
+                      <button class="btn btn-text" (click)="focusStepTarget(step)">{{ 'Ver {code} en la foto →' | t: { code: target.code } }}</button>
+                    }
+                  </div>
+                </li>
+              } @empty {
+                <li class="muted">{{ (isLoadingDetail() || isRunning(current.status) ? 'Analizando…' : 'Sin pasos generados.') | t }}</li>
+              }
+            </ol>
+          </div>
+        }
+      }
+    </aside>
+  </main>
+  }
+
+  <!-- NEW INSPECTION DIALOG -->
+  @if (showUploadModal()) {
+    <app-capture-dialog
+      [segments]="network()?.segments ?? []"
+      [busy]="isUploading()"
+      (submitted)="startNewAnalysis($event)"
+      (closed)="showUploadModal.set(false)" />
+  }
+
+  <!-- PRINTABLE FILE: hidden on screen, the only thing on paper -->
+  @if (selectedAnalysis(); as current) {
+    @if (current.status === 'Completed') {
+      <app-print-report [inspection]="current" [budget]="budget()?.inspectionId === current.id ? budget() : null" [segmentName]="inspectionSegment()?.name ?? null" />
+    }
+  }
+
+  <!-- DELETE CONFIRMATION: native modal dialog, so focus, Esc and the backdrop come from the browser -->
+  <dialog #deleteDialog class="modal confirm-dialog" aria-labelledby="delete-title" aria-describedby="delete-body" (click)="$event.target === $event.currentTarget && closeDelete()">
+    @if (selectedAnalysis(); as current) {
+      <header class="modal-head"><h2 id="delete-title">{{ 'Eliminar inspección' | t }}</h2></header>
+      <div class="modal-body">
+        <p id="delete-body">{{ 'Se borrarán «{title}», su análisis, el presupuesto y las conversaciones. Esta acción no se puede deshacer.' | t: { title: current.title } }}</p>
+      </div>
+      <footer class="modal-foot">
+        <button class="btn btn-secondary" (click)="closeDelete()" autofocus>{{ 'Cancelar' | t }}</button>
+        <button class="btn btn-danger" (click)="deleteAnalysis()">{{ 'Eliminar' | t }}</button>
+      </footer>
+    }
+  </dialog>
+
+  @if (toast(); as t) {
+    <div class="toast" [class.error]="t.kind === 'error'" role="status">
+      <span>{{ t.text | t }}</span>
+      <button class="icon-btn" [attr.aria-label]="'Cerrar aviso' | t" (click)="toast.set(null)">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+      </button>
+    </div>
+  }
+</div>

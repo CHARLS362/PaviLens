@@ -1,0 +1,468 @@
+<div class="planner">
+  <!-- ============ MAP ============ -->
+  <section class="planner-map" (mouseleave)="hovered.set(null)">
+    <div class="map-toolbar">
+      <div class="segmented" role="group" [attr.aria-label]="'Qué mostrar en el mapa' | t">
+        <button [class.active]="mode() === 'work'" [attr.aria-pressed]="mode() === 'work'" (click)="mode.set('work')">{{ 'Con obra' | t }}</button>
+        <button [class.active]="mode() === 'base'" [attr.aria-pressed]="mode() === 'base'" (click)="mode.set('base')">{{ 'Sin obra' | t }}</button>
+        <button [class.active]="mode() === 'diff'" [attr.aria-pressed]="mode() === 'diff'" (click)="mode.set('diff')">{{ 'Diferencia' | t }}</button>
+      </div>
+      <span class="map-status" [class.busy]="isSimulating()">
+        <span class="pulse" aria-hidden="true"></span>
+        {{ (isSimulating() ? 'Calculando el tráfico…' : simulation() ? 'Tráfico calculado' : '') | t }}
+      </span>
+    </div>
+
+    <svg class="city" [attr.viewBox]="viewBox" preserveAspectRatio="xMidYMid meet" role="img" [attr.aria-label]="mapLabel()">
+      <defs>
+        <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="6" height="6" fill="#f6b300" />
+          <rect width="3" height="6" fill="#1b1f24" />
+        </pattern>
+        <linearGradient id="lake" x1="0" x2="1">
+          <stop offset="0" stop-color="var(--lake-shore)" />
+          <stop offset="1" stop-color="var(--lake-deep)" />
+        </linearGradient>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" />
+        </filter>
+      </defs>
+
+      <!-- Land, lake and shoreline promenade -->
+      <rect class="land" x="-90" y="-70" width="520" height="440" />
+      <path class="lake" d="M352,-70 C340,-20 362,20 350,70 C338,120 360,170 348,220 C338,265 356,310 346,370 L430,370 L430,-70 Z" fill="url(#lake)" />
+      <path class="shore" d="M352,-70 C340,-20 362,20 350,70 C338,120 360,170 348,220 C338,265 356,310 346,370" />
+      <text class="lake-label" transform="translate(392 150) rotate(90)">{{ 'Lago Titicaca · Bahía de Puno' | t }}</text>
+
+      <!-- City blocks around the modelled streets -->
+      @for (x of gridX; track x; let i = $index) {
+        @if (i < gridX.length - 1) {
+          @for (y of gridY; track y; let j = $index) {
+            @if (j < gridY.length - 1) {
+              <rect
+                class="block"
+                [class.plaza]="x === 100 && y === 100"
+                [attr.x]="x + 10" [attr.y]="y + 10" width="80" height="80" rx="3" />
+            }
+          }
+        }
+      }
+      <g class="plaza-detail">
+        <path d="M112,112 L188,188 M188,112 L112,188" />
+        <circle cx="150" cy="150" r="9" />
+        <text x="150" y="176" text-anchor="middle">{{ 'Plaza de Armas' | t }}</text>
+      </g>
+      <rect class="malecon" x="310" y="-70" width="28" height="440" />
+
+      <!-- Streets outside the model -->
+      @for (x of gridX; track x) {
+        <line class="street context" [attr.x1]="x" y1="-70" [attr.x2]="x" y2="370" />
+      }
+      @for (y of gridY; track y) {
+        <line class="street context" x1="-90" [attr.y1]="y" x2="330" [attr.y2]="y" />
+      }
+
+      <!-- Modelled streets: detour glow, asphalt, closure and flows -->
+      @for (s of streets(); track s.id) {
+        @if (s.detourRank) {
+          <line class="detour-glow" [attr.x1]="s.x1" [attr.y1]="s.y1" [attr.x2]="s.x2" [attr.y2]="s.y2" [attr.stroke-width]="s.width + 12" filter="url(#glow)" />
+        }
+      }
+      @for (s of streets(); track s.id) {
+        <line class="street casing" [attr.x1]="s.x1" [attr.y1]="s.y1" [attr.x2]="s.x2" [attr.y2]="s.y2" [attr.stroke-width]="s.width + 3" />
+      }
+      @for (s of streets(); track s.id) {
+        <line class="street asphalt" [attr.x1]="s.x1" [attr.y1]="s.y1" [attr.x2]="s.x2" [attr.y2]="s.y2" [attr.stroke-width]="s.width" />
+        <line class="centerline" [class.double]="s.width === 18" [attr.x1]="s.x1" [attr.y1]="s.y1" [attr.x2]="s.x2" [attr.y2]="s.y2" />
+      }
+
+      @for (s of streets(); track s.id) {
+        <g class="link" [class.selected]="s.selected">
+          @for (l of s.lanes; track l.key) {
+            @if (l.width > 0) {
+              <path class="flow" [attr.d]="l.d" [attr.stroke-width]="l.width" [style.stroke]="l.color" />
+              @if (l.speed > 0) {
+                <path class="particles" [attr.d]="l.d" [style.animation-duration.s]="l.speed" />
+              }
+              @for (a of l.arrows; track $index) {
+                <path class="dir-arrow" d="M-2.2,-2.4 L1.8,0 L-2.2,2.4" [attr.transform]="'translate(' + a.x + ' ' + a.y + ') rotate(' + a.a + ')'" />
+              }
+            }
+          }
+          @if (s.workZone) {
+            <line
+              class="work-zone"
+              [attr.x1]="s.x1 + (s.horizontal ? 14 : 0)" [attr.y1]="s.y1 + (s.horizontal ? 0 : 14)"
+              [attr.x2]="s.x2 - (s.horizontal ? 14 : 0)" [attr.y2]="s.y2 - (s.horizontal ? 0 : 14)"
+              [attr.stroke-width]="s.width * s.closedShare" />
+          }
+          @if (s.selected) {
+            <line class="selection" [attr.x1]="s.x1" [attr.y1]="s.y1" [attr.x2]="s.x2" [attr.y2]="s.y2" [attr.stroke-width]="s.width + 7" />
+          }
+          <line
+            class="hit"
+            [attr.x1]="s.x1" [attr.y1]="s.y1" [attr.x2]="s.x2" [attr.y2]="s.y2"
+            (click)="select(s.id)"
+            (mousemove)="onStreetEnter(s.id, $event)"
+            (mouseleave)="hovered.set(null)">
+            <title>{{ s.id }} · {{ s.name }}</title>
+          </line>
+        </g>
+      }
+
+      <!-- Intersections -->
+      @for (n of network().nodes; track n.id) {
+        <rect class="junction" [attr.x]="n.x - 4" [attr.y]="n.y - 4" width="8" height="8" rx="1.5" />
+      }
+
+      <!-- Detour routes: casing, colour, moving dashes in the travel direction, block arrows and arrowhead -->
+      @for (r of routeLines(); track r.id) {
+        <g class="route" [style.--route]="r.color">
+          <path class="route-casing" [attr.d]="r.d" />
+          <path class="route-line" [attr.d]="r.d" />
+          <path class="route-flow" [attr.d]="r.d" />
+          @for (a of r.arrows; track $index) {
+            <path class="route-arrow" d="M-4,-4.5 L4,0 L-4,4.5 L-1.8,0 Z" [attr.transform]="'translate(' + a.x + ' ' + a.y + ') rotate(' + a.a + ')'" />
+          }
+          <path class="route-head" d="M-6,-6 L6,0 L-6,6 L-3,0 Z" [attr.transform]="'translate(' + r.head.x + ' ' + r.head.y + ') rotate(' + r.head.a + ')'" />
+          <g class="route-start" [attr.transform]="'translate(' + r.start.x + ' ' + r.start.y + ')'">
+            <circle r="6.5" />
+            <text y="2.6" text-anchor="middle">{{ r.number }}</text>
+          </g>
+        </g>
+      }
+
+      <!-- Full closure: no-entry discs at both ends -->
+      @for (e of closureEnds(); track $index) {
+        <g class="no-entry" [attr.transform]="'translate(' + e.x + ' ' + e.y + ')'">
+          <circle r="6" />
+          <rect x="-3.6" y="-1.1" width="7.2" height="2.2" rx="0.6" />
+        </g>
+      }
+
+      <!-- Signs from the AI plan -->
+      @for (s of signMarkers(); track s.id) {
+        <g class="sign" [attr.transform]="'translate(' + s.x + ' ' + s.y + ')'">
+          <path d="M0,-7 L7,0 L0,7 L-7,0 Z" />
+          <text y="2.3" text-anchor="middle">{{ s.label }}</text>
+        </g>
+      }
+
+      <!-- Markers -->
+      @for (s of streets(); track s.id) {
+        @if (s.workZone) {
+          <g class="marker work" [attr.transform]="'translate(' + s.mx + ' ' + s.my + ')'">
+            <path d="M0,-13 L11,6 L-11,6 Z" />
+            <path class="cone-band" d="M-5.5,-3 L5.5,-3" />
+            <text y="21" text-anchor="middle">{{ 'OBRA' | t }}</text>
+          </g>
+        }
+        @if (s.detourRank) {
+          <g class="marker detour" [attr.transform]="'translate(' + (s.mx + (s.horizontal ? 0 : 16)) + ' ' + (s.my + (s.horizontal ? -15 : 0)) + ')'">
+            <circle r="7.5" />
+            <text y="3" text-anchor="middle">{{ s.detourRank }}</text>
+          </g>
+        }
+        @if (s.inspected && !s.workZone) {
+          <g class="marker inspected" [attr.transform]="'translate(' + (s.mx + (s.horizontal ? 0 : -16)) + ' ' + (s.my + (s.horizontal ? 16 : 0)) + ')'">
+            <circle r="7.5" />
+            <path d="M-3.5,-1.5h1.5l1-1.5h2l1,1.5h1.5v4h-7z" />
+          </g>
+        }
+      }
+
+      <!-- Street names -->
+      @for (l of corridorLabels(); track l.name) {
+        <text
+          class="street-name"
+          [attr.transform]="l.vertical ? 'translate(' + (l.x + 3) + ' ' + l.y + ') rotate(-90)' : 'translate(' + l.x + ' ' + (l.y + 3) + ')'"
+          text-anchor="middle">{{ l.name }}</text>
+      }
+
+      <!-- North arrow and scale: 100 map units = 200 m -->
+      <g class="compass" transform="translate(410 -36)">
+        <path d="M0,-11 L5,5 L0,2 L-5,5 Z" />
+        <text y="-14" text-anchor="middle">N</text>
+      </g>
+      <g class="scale" transform="translate(362 330)">
+        <rect width="25" height="4" />
+        <rect x="25" width="25" height="4" class="alt" />
+        <text x="0" y="-3">0</text>
+        <text x="50" y="-3" text-anchor="middle">100 m</text>
+      </g>
+    </svg>
+
+    @if (tooltip(); as t) {
+      <div class="map-tooltip" [style.left.px]="t.x + 14" [style.top.px]="t.y + 14">
+        <div class="tt-head"><span class="code">{{ t.segment.id }}</span> {{ t.segment.name }}</div>
+        <div class="tt-meta">{{ t.segment.lengthKm * 1000 | number:'1.0-0' }} m · {{ t.segment.lanesPerDirection }} {{ (t.segment.lanesPerDirection === 1 ? 'carril/sentido ·' : 'carriles/sentido ·') | t }} {{ t.segment.freeSpeedKmh }} km/h</div>
+        @for (d of t.dirs; track d.label) {
+          <div class="tt-dir">
+            <span class="tt-label">{{ d.label | t }}</span>
+            @if (d.closed) {
+              <span class="tt-closed">{{ 'Cerrado' | t }}</span>
+            } @else {
+              <span>{{ d.baseFlow | number:'1.0-0' }} → <b>{{ d.workFlow | number:'1.0-0' }}</b> {{ 'veh/h' | t }}</span>
+              <span [ngClass]="vcClass(d.vc)" class="tt-vc">{{ loadLabel(d.vc) }} · {{ d.vc * 100 | number:'1.0-0' }} %</span>
+              <span class="muted">{{ d.baseMin * 60 | number:'1.0-0' }} → {{ d.workMin * 60 | number:'1.0-0' }} s</span>
+            }
+          </div>
+        }
+        <div class="tt-hint">{{ '% = capacidad de la calle en uso · clic para cerrar este tramo' | t }}</div>
+      </div>
+    }
+
+    <div class="map-legend" [attr.aria-label]="'Leyenda del mapa' | t">
+      @if (mode() === 'diff') {
+        <span class="lg"><i class="sw" style="background: var(--flow-up)"></i>{{ 'Recibe tráfico' | t }}</span>
+        <span class="lg"><i class="sw" style="background: var(--flow-down)"></i>{{ 'Pierde tráfico' | t }}</span>
+      } @else {
+        <span class="lg-title">{{ 'Tráfico' | t }}</span>
+        <span class="lg"><i class="sw" style="background: var(--vc-1)"></i>{{ 'Fluido' | t }}</span>
+        <span class="lg"><i class="sw" style="background: var(--vc-2)"></i>{{ 'Moderado' | t }}</span>
+        <span class="lg"><i class="sw" style="background: var(--vc-3)"></i>{{ 'Denso' | t }}</span>
+        <span class="lg"><i class="sw" style="background: var(--vc-4)"></i>{{ 'Al límite' | t }}</span>
+        <span class="lg"><i class="sw" style="background: var(--vc-5)"></i>{{ 'Colapsado' | t }}</span>
+      }
+      <span class="lg"><i class="sw arrow" aria-hidden="true">›</i>{{ 'Sentido' | t }}</span>
+      <span class="lg"><i class="sw route" aria-hidden="true"></i>{{ 'Ruta de desvío' | t }}</span>
+      <span class="lg"><i class="sw hatch"></i>{{ 'Obra' | t }}</span>
+      <span class="lg"><i class="sw dot detour"></i>{{ 'Calle con más tráfico' | t }}</span>
+      @if (signMarkers().length) { <span class="lg"><i class="sw sign" aria-hidden="true"></i>{{ 'Señal' | t }}</span> }
+      <span class="lg"><i class="sw dot inspected"></i>{{ 'Inspección' | t }}</span>
+      <label class="lg toggle"><input type="checkbox" [checked]="showRoutes()" (change)="showRoutes.set(!showRoutes())" />{{ 'Ver rutas' | t }}</label>
+    </div>
+  </section>
+
+  <!-- ============ CONTROLS AND RESULTS ============ -->
+  <aside class="planner-panel">
+    <header class="panel-head">
+      <h2>{{ 'Planificación de cierre' | t }}</h2>
+      <p class="muted">{{ network().name | t }}</p>
+    </header>
+
+    <p class="sr-only" aria-live="polite">{{ announcement() }}</p>
+
+    <section class="card segment-picker">
+      <label class="control-label" for="planner-segment">{{ 'Calle donde se hará la obra' | t }}</label>
+      <select id="planner-segment" [value]="segmentId()" (change)="select($any($event.target).value)" aria-describedby="planner-segment-help">
+        @for (s of segmentOptions(); track s.id) {
+          <option [value]="s.id" [selected]="s.id === segmentId()">{{ s.name }} ({{ s.id }}){{ s.id === inspectedSegment() ? (' · inspeccionado' | t) : '' }}</option>
+        }
+      </select>
+      <span id="planner-segment-help" class="help">{{ 'También puedes tocar una calle en el mapa.' | t }}</span>
+    </section>
+
+    @if (segment(); as seg) {
+      <section class="card segment-card">
+        <div class="seg-title">
+          <span class="code">{{ seg.id }}</span>
+          <strong>{{ seg.name }}</strong>
+          @if (seg.id === inspectedSegment()) { <span class="tag inspected">{{ 'Inspeccionado' | t }}</span> }
+        </div>
+        <dl class="seg-specs">
+          <div><dt>{{ 'Longitud' | t }}</dt><dd>{{ seg.lengthKm * 1000 | number:'1.0-0' }} m</dd></div>
+          <div><dt>{{ 'Carriles' | t }}</dt><dd>{{ seg.lanesPerDirection }} {{ 'por sentido' | t }}</dd></div>
+          <div><dt>{{ 'Capacidad' | t }}</dt><dd>{{ seg.lanesPerDirection * seg.capacityPerLaneVph | number:'1.0-0' }} {{ 'veh/h' | t }}</dd></div>
+          <div><dt>{{ 'Vel. libre' | t }}</dt><dd>{{ seg.freeSpeedKmh }} km/h</dd></div>
+        </dl>
+      </section>
+
+      <section class="card controls">
+        <div class="control">
+          <span class="control-label" id="lanes-label">{{ 'Carriles cerrados por sentido' | t }}</span>
+          <div class="segmented full" role="group" aria-labelledby="lanes-label">
+            @for (n of laneOptions(); track n) {
+              <button [class.active]="lanesClosed() === n" [attr.aria-pressed]="lanesClosed() === n" (click)="setLanes(n)">
+                {{ n }}{{ n === seg.lanesPerDirection ? ' · total' : '' }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="control">
+          <span class="control-label" id="period-label">{{ 'Horario de la obra' | t }}</span>
+          <div class="period-grid" role="group" aria-labelledby="period-label">
+            @for (p of periods; track p.id) {
+              <button class="period" [class.active]="period() === p.id" [attr.aria-pressed]="period() === p.id" (click)="period.set(p.id)">
+                <span class="p-name">{{ p.label | t }}</span>
+                <span class="p-hours">{{ p.hours }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="control">
+          <label class="control-label" for="duration">{{ 'Duración de la obra' | t }} <b>{{ durationH() }} h</b></label>
+          <input id="duration" type="range" min="1" max="72" step="1" [value]="durationH()" [attr.aria-valuetext]="(durationH() === 1 ? '1 hora' : '{n} horas') | t: { n: durationH() }" (input)="setDuration($any($event.target).value)" />
+          <div class="range-scale"><span>1 h</span><span>{{ '1 día' | t }}</span><span>{{ '3 días' | t }}</span></div>
+        </div>
+      </section>
+    }
+
+    @if (error(); as e) {
+      <p class="error-box">{{ e | t }}</p>
+    }
+
+    @if (simulation(); as sim) {
+      <section class="card kpi-card" [class.stale]="isSimulating()">
+        <div class="big-kpi">
+          <span class="k-label">{{ 'Costo social del cierre' | t }}</span>
+          <span class="k-value">S/ {{ sim.userCostPen | number:'1.0-0' }}</span>
+          <span class="k-help">{{ 'Lo que vale el tiempo extra que pierden los conductores por la obra.' | t }}</span>
+          <span class="k-sub">{{ sim.deltaVehH | number:'1.1-1' }} {{ 'veh·h por hora ×' | t }} {{ sim.durationH }} h × S/ {{ sim.valueOfTimePenPerVehH | number:'1.2-2' }}</span>
+        </div>
+        <div class="kpi-row">
+          <div>
+            <span class="k-label">{{ 'Más tiempo de viaje' | t }}</span>
+            <span class="k-num" [class.bad]="sim.deltaPct > 10">+{{ sim.deltaPct | number:'1.1-1' }} %</span>
+          </div>
+          <div>
+            <span class="k-label">{{ 'Vehículos desviados' | t }}</span>
+            <span class="k-num">{{ displacedVph() | number:'1.0-0' }}<small> {{ 'veh/h' | t }}</small></span>
+          </div>
+          <div>
+            <span class="k-label">{{ 'Calles colapsadas' | t }}</span>
+            <span class="k-num" [class.bad]="sim.overCapacityLinks > 0">{{ sim.overCapacityLinks }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card ai-plan" aria-labelledby="ai-plan-title">
+        <div class="ai-head">
+          <h3 class="card-title" id="ai-plan-title">{{ 'Plan de manejo de tránsito' | t }}</h3>
+          @if (plan(); as p) {
+            <span class="tag" [class.ok]="p.engine === 'Meta'" [class.sim]="p.engine !== 'Meta'">{{ (p.engine === 'Meta' ? 'Muse Wonder · Meta' : 'Simulación') | t }}</span>
+          }
+        </div>
+
+        @if (!plan() || !planIsCurrent()) {
+          <p class="ai-intro">
+            @if (plan()) {
+              {{ 'El plan anterior era para otra configuración. Genera uno nuevo para este cierre.' | t }}
+            } @else {
+              {{ 'La IA de Meta (Muse Wonder) revisa el tráfico calculado y propone rutas por tipo de vehículo, señalización, fases de obra y avisos a la población.' | t }}
+            }
+          </p>
+          <button class="btn btn-primary ai-btn" [disabled]="isPlanning() || isSimulating()" (click)="generatePlan()">
+            @if (isPlanning()) {
+              <span class="spinner" aria-hidden="true"></span> {{ 'Consultando a Muse Wonder…' | t }}
+            } @else {
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l1.6 3.9 3.9 1.6-3.9 1.6L8 12.5 6.4 8.6 2.5 7l3.9-1.6z" /></svg>
+              {{ 'Generar plan con IA' | t }}
+            }
+          </button>
+        } @else {
+          @let p = plan()!;
+          <p class="ai-summary">{{ p.summary }}</p>
+
+          <h4 class="ai-sub">{{ 'Señalización' | t }} <span class="muted">({{ p.signage.length }})</span></h4>
+          <ol class="signs">
+            @for (s of p.signage; track $index; let i = $index) {
+              <li>
+                <span class="sign-no" aria-hidden="true">{{ i + 1 }}</span>
+                <span><b>{{ s.message }}</b><small>{{ s.kind }} · {{ s.nodeName }}</small></span>
+              </li>
+            }
+          </ol>
+
+          <h4 class="ai-sub">{{ 'Fases' | t }}</h4>
+          <ol class="phases">
+            @for (ph of p.phases; track ph.order) {
+              <li><b>{{ ph.title }}</b> <span class="when">{{ ph.when }}</span><p>{{ ph.description }}</p></li>
+            }
+          </ol>
+
+          @if (p.communication.length) {
+            <h4 class="ai-sub">{{ 'Avisos a la población' | t }}</h4>
+            <ul class="bullets">@for (c of p.communication; track $index) { <li>{{ c }}</li> }</ul>
+          }
+          @if (p.risks.length) {
+            <h4 class="ai-sub">{{ 'Riesgos' | t }}</h4>
+            <ul class="bullets warn">@for (r of p.risks; track $index) { <li>{{ r }}</li> }</ul>
+          }
+          <div class="ai-foot">
+            <span class="muted">{{ 'Modelo:' | t }} {{ p.model }}{{ '. Las cifras y rutas las calcula PaveLens; la IA decide y explica.' | t }}</span>
+            <button class="btn btn-secondary btn-sm" [disabled]="isPlanning()" (click)="generatePlan()">{{ (isPlanning() ? 'Consultando…' : 'Regenerar') | t }}</button>
+          </div>
+        }
+        @if (planError(); as e) {
+          <p class="error-box" role="alert">{{ e }}</p>
+        }
+      </section>
+
+      @if (routeLines().length) {
+        <section class="card">
+          <h3 class="card-title">{{ 'Rutas de desvío' | t }} <span class="muted">{{ (planIsCurrent() ? 'según el plan de IA' : 'más rápidas por sentido') | t }}</span></h3>
+          <p class="card-lead">{{ 'El recorrido que se señaliza para los conductores: el camino más rápido alrededor de la obra.' | t }}</p>
+          <ol class="routes">
+            @for (r of routeLines(); track r.id) {
+              <li>
+                <span class="route-badge" [style.background]="r.color" aria-hidden="true">{{ r.number }}</span>
+                <span class="route-text">
+                  <b>{{ r.name | t }}</b>
+                  <small>{{ r.streets.join(' → ') }}{{ r.vehicles ? ' · ' + r.vehicles : '' }}</small>
+                </span>
+                <span class="route-time">+{{ r.extraTimeMin | number:'1.1-1' }} {{ 'min' | t }}</span>
+              </li>
+            }
+          </ol>
+          <p class="footnote">{{ 'Tiempo extra frente a cruzar el tramo antes de la obra. Las flechas del mapa muestran el sentido de cada ruta.' | t }}</p>
+        </section>
+      }
+
+      <section class="card">
+        <h3 class="card-title">{{ '¿Cuándo ejecutar la obra?' | t }}</h3>
+        <div class="windows">
+          @for (w of windows(); track w.id) {
+            <button class="window" [class.active]="w.id === period()" [attr.aria-pressed]="w.id === period()" (click)="period.set(w.id)">
+              <span class="w-name">
+                {{ w.label | t }}
+                @if (w.recommended) { <span class="tag ok">{{ 'Recomendada' | t }}</span> }
+              </span>
+              <span class="w-bar"><span [style.width.%]="w.share * 100"></span></span>
+              <span class="w-cost">S/ {{ w.userCostPen | number:'1.0-0' }}</span>
+              <span class="w-meta">{{ w.demandFactor * 100 | number:'1.0-0' }} {{ '% del tráfico de hora punta · +' | t }}{{ w.deltaPct | number:'1.1-1' }} {{ '% tiempo' | t }}</span>
+            </button>
+          }
+        </div>
+        @if (saving(); as s) {
+          <p class="hint">{{ 'Ejecutar en franja de' | t }} <b>{{ s.label }}</b> {{ 'ahorra' | t }} <b>S/ {{ s.pen | number:'1.0-0' }}</b> {{ 'a los usuarios (' | t }}{{ s.pct | number:'1.0-0' }} {{ '% menos).' | t }}</p>
+        }
+      </section>
+
+      <section class="card">
+        <h3 class="card-title">{{ 'Calles que reciben el desvío' | t }} <span class="muted">{{ detourRows().length }}</span></h3>
+        <p class="card-lead">{{ 'Dónde termina el tráfico en realidad: el equilibrio reparte a todos los conductores, sigan o no la ruta señalizada, por eso aparecen más calles que en las rutas.' | t }}</p>
+        @if (detourRows().length) {
+          <ol class="detours">
+            @for (r of detourRows(); track r.id; let i = $index) {
+              <li>
+                <button class="detour-row" (click)="select(r.id)"
+                  [attr.aria-label]="'{i}. {name}: {n} vehículos por hora más, tráfico {load}. Pulsa para planificar una obra aquí.' | t: { i: i + 1, name: r.name, n: (r.delta | number:'1.0-0'), load: loadLabel(r.vc).toLowerCase() }">
+                  <span class="rank" aria-hidden="true">{{ i + 1 }}</span>
+                  <span class="d-name"><span class="code">{{ r.id }}</span> {{ r.name }}</span>
+                  <span class="d-bar" aria-hidden="true"><span [style.width.%]="r.delta / maxDetourDelta() * 100"></span></span>
+                  <span class="d-num">+{{ r.delta | number:'1.0-0' }}</span>
+                  <span class="d-vc" [ngClass]="vcClass(r.vc)">{{ loadLabel(r.vc) }}</span>
+                </button>
+              </li>
+            }
+          </ol>
+          <p class="footnote">{{ 'Vehículos por hora adicionales (ambos sentidos) y nivel de tráfico con la obra.' | t }}</p>
+        } @else {
+          <p class="muted">{{ 'La red absorbe el cierre sin un desvío marcado.' | t }}</p>
+        }
+      </section>
+
+      <details class="card assumptions">
+        <summary>{{ 'Cómo se calcula (supuestos del modelo)' | t }}</summary>
+        <ul>
+          <li>{{ 'Equilibrio de Wardrop (Frank-Wolfe + BPR):' | t }} {{ sim.workZone.iterations }} {{ 'iteraciones, brecha relativa' | t }} {{ sim.workZone.relativeGap | number:'1.0-5' }}.</li>
+          <li>{{ vcLegend() }}</li>
+          @for (n of sim.notes; track n) { <li>{{ n | t }}</li> }
+        </ul>
+      </details>
+    }
+  </aside>
+</div>

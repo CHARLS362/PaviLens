@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- Public API docs are not shipped; keep XML-doc warnings out of the build. -->
+    <!-- CA1711: "Queue" is the accurate name for the inspection work queue. -->
+    <NoWarn>$(NoWarn);CS1591;CA1711</NoWarn>
+  </PropertyGroup>
+</Project>
