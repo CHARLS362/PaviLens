@@ -122,6 +122,11 @@ namespace PaveLens.Infrastructure.Persistence.Migrations.Postgres
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<string>("Holes")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("HolesJson");
+
                     b.Property<Guid>("InspectionId")
                         .HasColumnType("uuid");
 

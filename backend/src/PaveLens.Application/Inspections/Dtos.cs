@@ -53,7 +53,8 @@ public sealed record DistressDto(
     MeasurementDto Measurement,
     QuantitiesDto? Quantities,
     string? Diagnosis,
-    string? RecommendedAction);
+    string? RecommendedAction,
+    IReadOnlyList<IReadOnlyList<double[]>>? Holes = null);
 
 public sealed record RepairStepDto(
     Guid Id,

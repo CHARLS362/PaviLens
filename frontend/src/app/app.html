@@ -213,8 +213,8 @@
                     (click)="pickOnPhoto(d)"
                     (mouseenter)="hoveredDistressId.set(d.id)"
                     (mouseleave)="hoveredDistressId.set(null)">
-                    <polygon class="mask-halo" [attr.points]="polygonPoints(d)" />
-                    <polygon class="mask-shape" [attr.points]="polygonPoints(d)" />
+                    <path class="mask-halo" [attr.d]="maskPath(d)" />
+                    <path class="mask-shape" [attr.d]="maskPath(d)" />
                   </g>
                 }
               </svg>

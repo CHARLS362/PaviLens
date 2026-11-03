@@ -121,7 +121,11 @@ internal sealed class InspectionToolSession(
                     var projection = GroundProjection.Create(inspection.ReferenceWidthM, inspection.Calibration, (double)image.Height / image.Width);
                     _measured.Clear();
                     foreach (var s in _segmentation!.Segments.Where(s => projection.Covers(s.Polygon)))
-                        _measured.Add(new MeasuredSegment(s with { Polygon = PolygonSimplifier.Simplify(s.Polygon, options.MaskSimplificationTolerance) }, PolygonMetrics.Measure(s.Polygon, projection, s.Holes)));
+                        _measured.Add(new MeasuredSegment(s with
+                        {
+                            Polygon = PolygonSimplifier.Simplify(s.Polygon, options.MaskSimplificationTolerance),
+                            Holes = s.Holes?.Select(h => PolygonSimplifier.Simplify(h, options.MaskSimplificationTolerance)).ToArray()
+                        }, PolygonMetrics.Measure(s.Polygon, projection, s.Holes)));
                     Require(_measured.Count > 0, "Todos los deterioros quedan sobre el horizonte de la calibración.");
                     _area = projection.SurveyedAreaM2;
                     _diagnosis = null; _computed = false; _verified = false; _mobilityDone = false;
@@ -154,7 +158,7 @@ internal sealed class InspectionToolSession(
                         return Distress.Create(f.Code, f.Type, f.Severity, m.Segment.Score, m.Segment.Polygon,
                             _segmentation!.Segments.Single(s => s.Index == f.SegmentIndex).Polygon.Count, m.Measurement,
                             Distress.IsPatchableType(f.Type) ? _quantities.Estimate(m.Measurement, _quantities.AssumedDepthM(f.Severity), DepthSource.Assumed) : null,
-                            m.Segment.Concept, f.Diagnosis, f.RecommendedAction);
+                            m.Segment.Concept, f.Diagnosis, f.RecommendedAction, m.Segment.Holes);
                     }).ToList();
                     var pci = PciCalculator.Compute(InspectionMapper.PciInputs(_distresses), _area);
                     _pci = pci.Pci;

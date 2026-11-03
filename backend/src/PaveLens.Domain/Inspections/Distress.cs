@@ -29,6 +29,9 @@ public sealed class Distress : Entity
     /// <summary>Simplified mask outline.</summary>
     public IReadOnlyList<NormalizedPoint> Mask { get; private set; } = [];
 
+    /// <summary>Simplified interior rings: intact pavement inside the outline, already excluded from the measured area.</summary>
+    public IReadOnlyList<IReadOnlyList<NormalizedPoint>> Holes { get; private set; } = [];
+
     /// <summary>Vertex count of the mask before polygon simplification.</summary>
     public int MaskVertexCountRaw { get; private set; }
 
@@ -57,9 +60,10 @@ public sealed class Distress : Entity
         DistressQuantities? quantities,
         string? sourceConcept,
         string? diagnosis,
-        string? recommendedAction)
+        string? recommendedAction,
+        IReadOnlyList<IReadOnlyList<NormalizedPoint>>? holes = null)
     {
-        if (mask.Count < 3)
+        if (mask.Count < 3 || holes?.Any(h => h.Count < 3) == true)
         {
             throw new DomainException("La máscara necesita al menos 3 vértices.");
         }
@@ -72,6 +76,7 @@ public sealed class Distress : Entity
             Confidence = Guard.InRange(confidence, 0, 1, "Confidence"),
             Box = BoundingBox.FromPolygon(mask),
             Mask = mask.ToArray(),
+            Holes = holes?.Select(h => (IReadOnlyList<NormalizedPoint>)h.ToArray()).ToArray() ?? [],
             MaskVertexCountRaw = Math.Max(maskVertexCountRaw, mask.Count),
             Measurement = Validate(measurement),
             SourceConcept = Guard.Optional(sourceConcept, "SourceConcept", 100),

@@ -22,4 +22,14 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.wordmark-name')?.textContent).toContain('PaveLens');
   });
+
+  it('should draw mask holes as extra subpaths of the outline', () => {
+    const app = TestBed.createComponent(App).componentInstance;
+    const distress = {
+      mask: [[0, 0], [0.5, 0], [0.5, 0.5]],
+      holes: [[[0.2, 0.1], [0.3, 0.1], [0.3, 0.2]]],
+      box: { x: 0, y: 0, width: 0.5, height: 0.5 }
+    } as unknown as Parameters<App['maskPath']>[0];
+    expect(app.maskPath(distress)).toBe('M0,0 L50,0 L50,50 Z M20,10 L30,10 L30,20 Z');
+  });
 });

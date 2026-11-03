@@ -5,6 +5,7 @@ using PaveLens.Application.Common;
 using PaveLens.Application.Inspections;
 using PaveLens.Application.Traffic;
 using PaveLens.Domain.Inspections;
+using PaveLens.Infrastructure.Ai.Simulation;
 using static PaveLens.IntegrationTests.PaveLensApiFactory;
 
 namespace PaveLens.IntegrationTests;
@@ -431,6 +432,59 @@ public sealed class TrafficApiTests(PaveLensApiFactory factory) : IClassFixture<
         using var response = await _client.PostAsJsonAsync("/api/v1/traffic/simulate", new { segmentId = "X99", lanesClosed = 1 }, Ct);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+}
+
+/// <summary>Intact pavement inside a mask is measured out, stored and returned for drawing.</summary>
+public sealed class MaskHoleTests
+{
+    /// <summary>The simulated fixture with a small square hole punched in the middle of the pothole.</summary>
+    private sealed class HoleSegmenter : IDistressSegmenter
+    {
+        private readonly SimulatedSegmenter _inner = new(new SimulationCatalog());
+        public AnalysisEngine Engine => _inner.Engine;
+        public bool Punch { get; set; }
+
+        public async Task<SegmentationResult> SegmentAsync(SegmentationRequest request, CancellationToken cancellationToken)
+        {
+            var result = await _inner.SegmentAsync(request, cancellationToken);
+            var segments = result.Segments.Select(s =>
+            {
+                if (!Punch || s.Concept != "pothole") return s;
+                var (cx, cy) = (s.Polygon.Average(p => p.X), s.Polygon.Average(p => p.Y));
+                NormalizedPoint[] hole = [new(cx - 0.01, cy - 0.01), new(cx - 0.01, cy + 0.01), new(cx + 0.01, cy + 0.01), new(cx + 0.01, cy - 0.01)];
+                return s with { Holes = [hole] };
+            }).ToList();
+            return result with { Segments = segments };
+        }
+    }
+
+    [Fact]
+    public async Task AHoleIsSubtractedPersistedAndReturned()
+    {
+        var segmenter = new HoleSegmenter();
+        await using var factory = new PaveLensApiFactory { Segmenter = segmenter };
+        var client = factory.CreateClient();
+        var ct = TestContext.Current.CancellationToken;
+
+        async Task<InspectionDetailDto> AnalyseAsync()
+        {
+            using var response = await client.PostAsync("/api/v1/inspections", Upload("av-el-sol-bache.jpg", referenceWidthM: 3.0), ct);
+            var created = await response.Content.ReadFromJsonAsync<InspectionDetailDto>(Json, ct);
+            return await WaitForAnalysisAsync(client, created!.Id, ct);
+        }
+
+        var solid = (await AnalyseAsync()).Distresses.Single(d => d.Code == "B1");
+        segmenter.Punch = true;
+        var detail = await AnalyseAsync();
+
+        Assert.Equal(InspectionStatus.Completed, detail.Status);
+        var b1 = detail.Distresses.Single(d => d.Code == "B1");
+        var hole = Assert.Single(b1.Holes!);
+        Assert.Equal(4, hole.Count);
+        Assert.Empty(solid.Holes!);
+        Assert.True(b1.Measurement.AreaM2 < solid.Measurement.AreaM2, $"{b1.Measurement.AreaM2} m² con hueco, {solid.Measurement.AreaM2} m² sin él");
+        Assert.Empty(detail.Distresses.Single(d => d.Code == "FL1").Holes!);
     }
 }
 

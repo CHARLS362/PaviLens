@@ -391,13 +391,14 @@ export class App implements OnInit, OnDestroy {
     return this.selectedAnalysis()?.distresses.find(d => d.code === step.targetCode);
   }
 
-  polygonPoints(d: Distress): string {
+  /** Outline plus holes as one SVG path; the even-odd fill leaves intact pavement inside the mask uncovered. */
+  maskPath(d: Distress): string {
+    const ring = (points: [number, number][]) => 'M' + points.map(([x, y]) => `${x * 100},${y * 100}`).join(' L') + ' Z';
     if (d.mask?.length >= 3) {
-      return d.mask.map(([x, y]) => `${x * 100},${y * 100}`).join(' ');
+      return [d.mask, ...(d.holes ?? []).filter(h => h.length >= 3)].map(ring).join(' ');
     }
     const { x, y, width, height } = d.box;
-    const x1 = x * 100, y1 = y * 100, x2 = (x + width) * 100, y2 = (y + height) * 100;
-    return `${x1},${y1} ${x2},${y1} ${x2},${y2} ${x1},${y2}`;
+    return ring([[x, y], [x + width, y], [x + width, y + height], [x, y + height]]);
   }
 
   /** Calibration rectangle drawn over oblique photos. */

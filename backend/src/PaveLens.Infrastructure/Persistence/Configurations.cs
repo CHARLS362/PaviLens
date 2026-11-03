@@ -156,6 +156,18 @@ internal sealed class DistressConfiguration : IEntityTypeConfiguration<Distress>
                     v => v.ToArray()))
             .IsRequired();
 
+        // Interior rings in the same compact format, "[]" when the mask has no holes.
+        builder.Property(d => d.Holes)
+            .HasColumnName("HolesJson")
+            .HasConversion(
+                v => SerializeHoles(v),
+                v => DeserializeHoles(v),
+                new ValueComparer<IReadOnlyList<IReadOnlyList<NormalizedPoint>>>(
+                    (a, b) => a!.Count == b!.Count && a.Zip(b).All(r => r.First.SequenceEqual(r.Second)),
+                    v => v.Aggregate(0, (hash, h) => HashCode.Combine(hash, h.Count)),
+                    v => v.Select(h => (IReadOnlyList<NormalizedPoint>)h.ToArray()).ToArray()))
+            .IsRequired();
+
         // Null for cracks (sealed, not patched); a nullable group of columns otherwise.
         builder.OwnsOne(d => d.Quantities, q =>
         {
@@ -175,6 +187,14 @@ internal sealed class DistressConfiguration : IEntityTypeConfiguration<Distress>
     private static NormalizedPoint[] DeserializeMask(string json) =>
         (JsonSerializer.Deserialize<double[][]>(json, Json) ?? [])
             .Select(pair => new NormalizedPoint(pair[0], pair[1]))
+            .ToArray();
+
+    private static string SerializeHoles(IReadOnlyList<IReadOnlyList<NormalizedPoint>> holes) =>
+        JsonSerializer.Serialize(holes.Select(h => h.Select(p => new[] { Math.Round(p.X, 5), Math.Round(p.Y, 5) })), Json);
+
+    private static IReadOnlyList<NormalizedPoint>[] DeserializeHoles(string json) =>
+        (JsonSerializer.Deserialize<double[][][]>(json, Json) ?? [])
+            .Select(h => (IReadOnlyList<NormalizedPoint>)h.Select(pair => new NormalizedPoint(pair[0], pair[1])).ToArray())
             .ToArray();
 }
 

@@ -111,6 +111,8 @@ export interface Distress {
   box: Box;
   /** Closed polygon in normalized image coordinates, [x, y] pairs. */
   mask: [number, number][];
+  /** Interior rings of intact pavement, already excluded from the measured area. */
+  holes?: [number, number][][];
   maskVertexCountRaw: number;
   sourceConcept?: string;
   measurement: Measurement;

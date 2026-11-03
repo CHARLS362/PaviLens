@@ -117,6 +117,11 @@ namespace PaveLens.Infrastructure.Persistence.Migrations.Sqlite
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Holes")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("HolesJson");
+
                     b.Property<Guid>("InspectionId")
                         .HasColumnType("TEXT");
 

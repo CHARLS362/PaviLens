@@ -72,7 +72,8 @@ public static class InspectionMapper
                 d.Measurement.WidthM, d.Measurement.Eccentricity, d.Measurement.OrientationDeg),
             d.Quantities is { } q ? new QuantitiesDto(q.DepthM, q.DepthSource, q.CutAreaM2, q.VolumeM3, q.MassT) : null,
             d.Diagnosis,
-            d.RecommendedAction);
+            d.RecommendedAction,
+            d.Holes.Select(h => (IReadOnlyList<double[]>)h.Select(p => new[] { p.X, p.Y }).ToList()).ToList());
 
     public static RepairStepDto ToDto(RepairStep s) =>
         new(s.Id, s.Order, s.Title, s.Instructions, s.Tools, s.Risk, s.TargetCode, s.CompletedAt);

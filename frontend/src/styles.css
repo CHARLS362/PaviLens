@@ -635,7 +635,8 @@ button {
 
 .mask { cursor: pointer; }
 
-.mask polygon {
+.mask path {
+  fill-rule: evenodd;
   vector-effect: non-scaling-stroke;
   stroke-linejoin: round;
 }
