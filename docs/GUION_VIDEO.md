@@ -1,0 +1,22 @@
+# Guion de video demo — PaveLens AI (2:30)
+
+Meta Global AI Developer Hackathon · Indie track. Duración objetivo: 2 minutos 30 segundos. Idioma: español (la interfaz y los informes existen en ES/EN).
+
+Rúbrica que cubre el guion: Impacto 30 %, Demo y video 25 %, Meta AI Tooling 25 %, Profundidad técnica 20 %.
+
+## Guion por bloques
+
+| Tiempo | En pantalla | Voz en off (texto literal) |
+|---|---|---|
+| 0:00 – 0:25 · El problema (Impacto) | Calles de Puno (foto fija), texto: "Puno, 3 800 m · heladas · radiación UV · presupuestos pequeños". | "En Puno, como en casi todo el Perú, los baches se miden a pie, con wincha. La severidad depende de quién mire, el metrado se calcula a ojo y nadie modela el tráfico que provoca cerrar la calle para reparar. Con presupuestos pequeños, cada metro cuadrado mal medido es dinero perdido." |
+| 0:25 – 1:00 · Segmentación y medición (Meta AI Tooling + Profundidad técnica) | Subir una foto en PaveLens. Contornos de cada deterioro sobre la foto, zoom hasta ver el borde, cursor mostrando la posición en metros sobre la calzada. Calibración visible: ancho de calzada o 4 puntos en foto oblicua. | "Subo una foto. Meta SAM 3, por Roboflow, o SAM 3.1 por la API de modelos de Meta, recibe conceptos en texto: 'pothole', 'alligator crack', y devuelve el contorno real de cada daño, no una caja. Cada vértice se proyecta al plano de la vía con homografía, así que la foto oblicua también mide. Los huecos de pavimento intacto dentro de una máscara se restan del área." |
+| 1:00 – 1:45 · Diagnóstico e ingeniería (Meta AI Tooling + Profundidad técnica) | Panel del informe: tipo, severidad ASTM D6433, protocolo de obra de Muse Wonder. Lado a lado: PCI, m², toneladas, presupuesto en PEN. Se ingresa la profundidad medida y los números se recalculan. Insignia "Modo demostración" visible. Resultado "NeedsReview" visible. | "Muse Wonder ve la foto y las medidas, clasifica cada daño con severidad ASTM D6433 y escribe el protocolo de obra. Pero los números no los inventa el modelo: el área en metros cuadrados, el PCI según ASTM D6433, el metrado, el presupuesto en soles y el tráfico los calcula código determinístico, verificado con escenas de prueba de área conocida: error menor al 1 %. Si el inspector ingresa la profundidad medida, todo se recalcula. Un resultado 'NeedsReview' es lo honesto en un informe preliminar: profundidad supuesta, muestra parcial y perfil regional de referencia. Y ojo: el proveedor queda fijado en el .env, Simulación o Meta. Si un modelo Meta falla, la inspección termina como Fallida a propósito: nunca se muestran datos falsos. Esto que ven es modo demostración, etiquetado 'Modo demostración'." |
+| 1:45 – 2:15 · Tráfico durante la obra (Impacto + Profundidad técnica) | Planificador de desvíos: mapa animado de la red de demostración, cierre de un carril, calles que absorben el desvío, horas-vehículo perdidas y costo social en soles por ventana (punta, valle, noche). Texto en pantalla: "Red sintética de demostración de Puno". | "Al cerrar un carril, PaveLens resuelve el equilibrio de Wardrop con Frank-Wolfe y la función BPR sobre una red sintética de demostración de Puno: cuántas horas-vehículo se pierden, qué calles absorben el desvío y cuánto cuesta cada ventana de obra en soles, para programar la más barata. Repito: es una red sintética, no conteos reales." |
+| 2:15 – 2:30 · Cierre (Demo + Meta AI Tooling) | Pantalla final: foto con contornos + panel PCI/m²/presupuesto/tráfico. Texto: ".NET 10 · Angular 22 · 143 pruebas backend + 10 frontend · SAM 3 + Muse Wonder". | "PaveLens AI: los modelos de Meta ven el daño; la ingeniería lo mide, lo valoriza y planifica la obra. Un coordinador de Muse Wonder encadena 9 herramientas en orden y no puede terminar sin verify_report. Código abierto en .NET 10 y Angular 22, con 143 pruebas de backend y 10 de frontend." |
+
+## Notas de grabación (para no romper las reglas del demo)
+
+- Grabar en modo demostración con la insignia "Modo demostración" visible, o decir en voz alta qué modo está activo. Si se graba con modelos Meta reales, leer los números de la pantalla, no los de este guion.
+- Decir siempre que la red vial de Puno es sintética y de demostración.
+- No presentar como hecho: inspección por video, conteos reales de tráfico, ni validación contra Crack500 o RDD2022. No están implementados.
+- No decir que hay reintento con simulación si falla Meta: no existe esa caída. El proveedor es fijo y el fallo termina en Fallida.

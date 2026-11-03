@@ -161,8 +161,13 @@ Any configuration key can go in `.env` with `__` instead of `:`, for example `Ai
 
 ## 6. Run the tests
 
+Run the tests from `backend/` because `global.json` lives there:
+
 ```bash
-dotnet test --solution backend/PaveLens.slnx
+cd backend
+```
+```bash
+dotnet test --solution PaveLens.slnx
 ```
 
 ```bash

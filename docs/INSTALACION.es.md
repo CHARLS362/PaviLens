@@ -161,8 +161,13 @@ Cualquier clave de configuración puede ir en `.env` con `__` en lugar de `:`, p
 
 ## 6. Ejecutar las pruebas
 
+Ejecuta las pruebas desde `backend/` porque `global.json` está allí:
+
 ```bash
-dotnet test --solution backend/PaveLens.slnx
+cd backend
+```
+```bash
+dotnet test --solution PaveLens.slnx
 ```
 
 ```bash

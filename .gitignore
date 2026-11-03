@@ -30,6 +30,7 @@ Thumbs.db
 
 # Local tool output
 .playwright-mcp/
+.muse/
 .build-user/
 .npm-cache/
 backend/tools/sam31/node_modules/

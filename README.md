@@ -127,10 +127,13 @@ meta/
 
 ## Tests
 
-133 backend tests (unit and integration) and 10 frontend tests:
+143 backend tests (unit and integration) and 10 frontend tests. Run the tests from `backend/` because `global.json` lives there:
 
 ```bash
-dotnet test --solution backend/PaveLens.slnx
+cd backend
+```
+```bash
+dotnet test --solution PaveLens.slnx
 ```
 
 ```bash

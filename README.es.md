@@ -115,8 +115,13 @@ Lo que sigue **no está implementado**; está pensado para crecer sin tocar el n
 
 ## Pruebas
 
+Ejecuta las pruebas desde `backend/` porque `global.json` está allí:
+
 ```bash
-dotnet test --solution backend/PaveLens.slnx
+cd backend
+```
+```bash
+dotnet test --solution PaveLens.slnx
 ```
 
 ```bash
