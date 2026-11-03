@@ -12,6 +12,7 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
+var dotEnvPath = DotEnvFile.AddTo(configuration, builder.Environment);
 
 builder.Services.AddApplication(configuration);
 builder.Services.AddInfrastructure(configuration, builder.Environment.ContentRootPath);
@@ -51,6 +52,8 @@ builder.Services.AddRateLimiter(o =>
 });
 
 var app = builder.Build();
+
+StartupLog.Configuration(app.Logger, dotEnvPath ?? "(no .env file)", configuration["Ai:Provider"] ?? "Simulation");
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

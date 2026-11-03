@@ -47,17 +47,19 @@ Both models are consumed through hosted APIs, so no GPU or model server is neede
 
 | Step | Model | Service | Key |
 |---|---|---|---|
-| Segmentation | Meta SAM 3 | Roboflow serverless API (`/sam3/concept_segment`) | `Ai:Meta:Segmentation:ApiKey` |
-| Diagnosis, assistant, traffic plan | Meta Muse Wonder (`muse-wonder-1.0`) | `https://api.meta.ai/v1`, OpenAI-compatible | `Ai:Meta:Reasoning:ApiKey` |
+| Segmentation | Meta SAM 3 (Roboflow serverless) or SAM 3.1 (Meta Model API) | `PAVELENS_SEGMENTATION_SERVICE` = `Roboflow` / `Meta` | `ROBOFLOW_API_KEY`, or `META_API_KEY` for SAM 3.1 |
+| Diagnosis, assistant, traffic plan, agent coordinator | Meta Muse Wonder (`muse-wonder-1.0`) | `https://api.meta.ai/v1`, OpenAI-compatible | `META_API_KEY` |
 
-```bash
-cd backend/src/PaveLens.Api
-dotnet user-secrets set "Ai:Provider" "Meta"
-dotnet user-secrets set "Ai:Meta:Segmentation:ApiKey" "<Roboflow key>"
-dotnet user-secrets set "Ai:Meta:Reasoning:ApiKey" "<Meta API key>"
+Keys go in a git-ignored **`.env` file at the repository root**, created from [`.env.example`](.env.example):
+
+```dotenv
+PAVELENS_AI_PROVIDER=Meta
+META_API_KEY=<Meta API key>
+PAVELENS_SEGMENTATION_SERVICE=Roboflow
+ROBOFLOW_API_KEY=<Roboflow key>
 ```
 
-Without keys, `Ai:Provider` is `Simulation`. Results come from fixed scenarios keyed by the image hash and are labelled `engine: "Simulation"`, and the UI shows a *Demo mode* badge. Keys belong in `dotnet user-secrets` or environment variables, never in `appsettings.json`. See [backend/README.md](backend/README.md#secrets).
+Without keys, `PAVELENS_AI_PROVIDER` is `Simulation`. Results come from fixed scenarios keyed by the image hash and are labelled `engine: "Simulation"`, and the UI shows a *Demo mode* badge. Environment variables (`Ai__Meta__Reasoning__ApiKey`...) and `dotnet user-secrets` also work; keys never go in `appsettings.json`. Every option is explained in **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#5-use-the-real-meta-models-env)**.
 
 Every inspection shows the **Meta AI pipeline** panel, which traces the work stage by stage:
 - the concepts sent to SAM 3 and the masks returned;
@@ -67,22 +69,34 @@ Every inspection shows the **Meta AI pipeline** panel, which traces the work sta
 
 ## Quick start
 
+Requirements: **.NET 10 SDK** and **Node.js 22.22+ or 24**. No keys, database server or GPU needed for the demo.
+
+```bash
+git clone https://github.com/CHARLS362/PaviLens.git
+```
+
+```bash
+cd PaviLens
+```
+
+Windows:
+
 ```powershell
 .\start.ps1
 ```
 
-Or run the two parts separately:
+macOS / Linux:
 
 ```bash
-dotnet run --project backend/src/PaveLens.Api --launch-profile http
+bash start.sh
 ```
 
-```bash
-npm --prefix frontend start
-```
+The script checks the prerequisites, creates `.env` from `.env.example` (demo mode), installs the frontend packages on the first run and starts both parts.
 
 - Web: http://localhost:4200 (proxies `/api` to the backend)
 - API: http://localhost:5000, with interactive docs at `/scalar`
+
+Step-by-step guide, manual start, real Meta keys and troubleshooting: **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)**.
 
 In Development, the backend uses SQLite, applies the migrations and seeds three demo inspections: Jr. Lima (calibrated angled photo), Av. El Sol (pothole) and Jr. Arequipa (alligator cracking).
 
@@ -100,7 +114,8 @@ meta/
 │   ├── tests/                    Unit and integration tests (xUnit v3)
 │   └── samples/                  Demo scenes and their generator
 ├── frontend/                     Angular 22 (standalone, signals), ES/EN
-└── start.ps1                     Starts the API and the web app
+├── .env.example                  Configuration template: copy to .env for real Meta keys
+└── start.ps1 / start.sh          Check prerequisites, create .env, start the API and the web app
 ```
 
 ## Documentation

@@ -143,7 +143,7 @@ Se desactiva `Seed` porque, con una base vacía, las muestras automáticas pasan
 
 En despliegue hay que distribuir `backend/tools/sam31` y sus dependencias. `Ai:Meta:Sam31ParserScript` debe resolver a `decode.mjs`, preferiblemente mediante una ruta absoluta del servidor. `Ai:Meta:NodeExecutable` debe identificar el ejecutable Node. Los valores relativos actuales están pensados para el árbol de desarrollo.
 
-Advertencia concreta del repositorio: `configure-meta-keys.ps1` todavía describe la integración anterior, propone Together/Sidecar y no activa `SegmentationService=Meta`. No es el procedimiento correcto para habilitar esta configuración de una sola clave. Los comandos anteriores reflejan el backend actual. Este reporte no modifica ese script ni configura credenciales.
+Nota: el antiguo `configure-meta-keys.ps1` se retiró porque describía la integración anterior. Las claves se configuran ahora en el archivo `.env` de la raíz (ver `.env.example` y la guía de instalación del README): `PAVELENS_AI_PROVIDER=Meta`, `META_API_KEY` y, para SAM 3.1 directo, `PAVELENS_SEGMENTATION_SERVICE=Meta`.
 
 ## 8. Límites de ejecución y consumo
 

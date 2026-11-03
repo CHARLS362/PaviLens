@@ -47,27 +47,40 @@ meta/
 │   ├── tests/                    Pruebas unitarias e integración (xUnit v3)
 │   └── samples/                  Escenas de demostración y su generador
 ├── frontend/                     Angular 22 (standalone, signals), ES/EN
-└── start.ps1                     Arranca API y web
+├── .env.example                  Plantilla de configuración: copiar a .env para las claves de Meta
+└── start.ps1 / start.sh          Comprueban requisitos, crean .env y arrancan API y web
 ```
 
 ## Inicio rápido
+
+Requisitos: **SDK de .NET 10** y **Node.js 22.22+ o 24**. Para la demostración no hacen falta claves, servidor de base de datos ni GPU.
+
+```bash
+git clone https://github.com/CHARLS362/PaviLens.git
+```
+
+```bash
+cd PaviLens
+```
+
+Windows:
 
 ```powershell
 .\start.ps1
 ```
 
-O por separado:
+macOS / Linux:
 
 ```bash
-dotnet run --project backend/src/PaveLens.Api --launch-profile http
+bash start.sh
 ```
 
-```bash
-npm --prefix frontend start
-```
+El script comprueba los requisitos, crea `.env` a partir de `.env.example` (modo demostración), instala los paquetes del frontend la primera vez y arranca ambas partes.
 
 - Web: http://localhost:4200 (redirige `/api` al backend)
 - API: http://localhost:5000, documentación interactiva en `/scalar`
+
+Guía paso a paso, arranque manual, claves reales de Meta y problemas frecuentes: **[docs/INSTALACION.es.md](docs/INSTALACION.es.md)**.
 
 En desarrollo el backend usa SQLite, aplica las migraciones y carga tres inspecciones de demostración: Jr. Lima (foto oblicua calibrada), Av. El Sol (bache) y Jr. Arequipa (piel de cocodrilo).
 
@@ -77,17 +90,19 @@ Los modelos se consumen por API: no hace falta GPU ni servidor propio.
 
 | Paso | Modelo | Servicio | Clave |
 |---|---|---|---|
-| Segmentación | Meta SAM 3 | API serverless de Roboflow (`/sam3/concept_segment`) | `Ai:Meta:Segmentation:ApiKey` |
-| Diagnóstico, asistente y plan de tránsito | Meta Muse Wonder (`muse-wonder-1.0`) | `https://api.meta.ai/v1`, compatible con OpenAI | `Ai:Meta:Reasoning:ApiKey` |
+| Segmentación | Meta SAM 3 (Roboflow serverless) o SAM 3.1 (Meta Model API) | `PAVELENS_SEGMENTATION_SERVICE` = `Roboflow` / `Meta` | `ROBOFLOW_API_KEY`, o `META_API_KEY` para SAM 3.1 |
+| Diagnóstico, asistente, plan de tránsito y coordinador de agentes | Meta Muse Wonder (`muse-wonder-1.0`) | `https://api.meta.ai/v1`, compatible con OpenAI | `META_API_KEY` |
 
-```bash
-cd backend/src/PaveLens.Api
-dotnet user-secrets set "Ai:Provider" "Meta"
-dotnet user-secrets set "Ai:Meta:Segmentation:ApiKey" "<clave Roboflow>"
-dotnet user-secrets set "Ai:Meta:Reasoning:ApiKey" "<clave Meta>"
+Las claves van en un **archivo `.env` en la raíz del repositorio**, que Git ignora y se crea a partir de [`.env.example`](.env.example):
+
+```dotenv
+PAVELENS_AI_PROVIDER=Meta
+META_API_KEY=<clave de Meta>
+PAVELENS_SEGMENTATION_SERVICE=Roboflow
+ROBOFLOW_API_KEY=<clave de Roboflow>
 ```
 
-Sin claves, `Ai:Provider` vale `Simulation`: los resultados vienen de escenarios fijos identificados por el hash de la imagen, quedan marcados con `engine: "Simulation"` y la interfaz muestra la insignia *Modo demostración*. Las claves van en `dotnet user-secrets` o en variables de entorno, nunca en `appsettings.json`. Detalles en [backend/README.md](backend/README.md#secrets).
+Sin claves, `PAVELENS_AI_PROVIDER` vale `Simulation`: los resultados vienen de escenarios fijos identificados por el hash de la imagen, quedan marcados con `engine: "Simulation"` y la interfaz muestra la insignia *Modo demostración*. También sirven las variables de entorno (`Ai__Meta__Reasoning__ApiKey`...) y `dotnet user-secrets`; las claves nunca van en `appsettings.json`. Todas las opciones están en **[docs/INSTALACION.es.md](docs/INSTALACION.es.md#5-usar-los-modelos-reales-de-meta-env)**.
 
 ## Hoja de ruta
 
