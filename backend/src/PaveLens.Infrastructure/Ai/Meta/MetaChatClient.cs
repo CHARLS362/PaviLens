@@ -98,7 +98,10 @@ internal sealed class MetaChatClient(HttpClient http, IOptions<AiOptions> option
         using var response = await http.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            throw new ModelUnavailableException($"El servicio de razonamiento respondió {(int)response.StatusCode}.");
+            // The provider's error text says which field it rejected; keep a short excerpt for the failure reason.
+            var detail = (await response.Content.ReadAsStringAsync(cancellationToken)).ReplaceLineEndings(" ");
+            if (detail.Length > 300) detail = detail[..300] + "…";
+            throw new ModelUnavailableException($"El servicio de razonamiento respondió {(int)response.StatusCode}. {detail}".TrimEnd());
         }
 
         try

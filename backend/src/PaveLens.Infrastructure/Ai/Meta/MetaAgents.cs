@@ -25,6 +25,7 @@ internal sealed class MetaInspectionCoordinator(MetaChatClient chat, IOptions<Or
         long input = 0, output = 0;
         var calls = 0;
         var toolCalls = 0;
+        var reminded = false;
         var attempts = new Dictionary<string, int>(StringComparer.Ordinal);
         var definitions = new JsonArray(tools.Select(t => (JsonNode)new JsonObject
         {
@@ -39,7 +40,8 @@ internal sealed class MetaInspectionCoordinator(MetaChatClient chat, IOptions<Or
             {
                 ["model"] = Model,
                 ["messages"] = new JsonArray(messages.Select(m => (JsonNode)m.DeepClone()).ToArray()),
-                ["tools"] = definitions.DeepClone(), ["tool_choice"] = "required",
+                // Meta's API accepts only "auto"; a prose reply is answered with one reminder below.
+                ["tools"] = definitions.DeepClone(), ["tool_choice"] = "auto",
                 ["max_completion_tokens"] = options.Value.MaxOutputTokens
             }, cancellationToken);
             calls++;
@@ -47,9 +49,15 @@ internal sealed class MetaInspectionCoordinator(MetaChatClient chat, IOptions<Or
             output += response["usage"]?["completion_tokens"]?.GetValue<long>() ?? 0;
             var message = response["choices"]?[0]?["message"] as JsonObject
                 ?? throw new ModelOutputException("El coordinador no devolvió un mensaje válido.");
-            if (message["tool_calls"] is not JsonArray requests || requests.Count == 0)
-                throw new ModelOutputException("El coordinador terminó sin ejecutar las herramientas requeridas.");
             messages.Add((JsonObject)message.DeepClone());
+            if (message["tool_calls"] is not JsonArray requests || requests.Count == 0)
+            {
+                if (reminded) throw new ModelOutputException("El coordinador terminó sin ejecutar las herramientas requeridas.");
+                reminded = true;
+                messages.Add(MetaChatClient.User("Do not answer in prose. Continue by calling the next required tool, and call finish after verify_report."));
+                continue;
+            }
+            reminded = false;
             foreach (var request in requests)
             {
                 if (++toolCalls > options.Value.MaxToolCalls) break;

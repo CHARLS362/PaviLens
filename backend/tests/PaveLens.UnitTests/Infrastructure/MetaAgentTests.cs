@@ -42,7 +42,21 @@ public class MetaAgentTests
         Assert.Equal(ExpectedCalls, executed);
         Assert.Equal(2, usage.Calls); Assert.Equal(24, usage.InputTokens); Assert.Equal(6, usage.OutputTokens);
         Assert.Equal("call-1", requests[1]["messages"]![3]!["tool_call_id"]!.GetValue<string>());
-        Assert.Equal("required", requests[0]["tool_choice"]!.GetValue<string>());
+        Assert.Equal("auto", requests[0]["tool_choice"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task RemindsOnceAfterAProseReplyAndThenRunsTheTools()
+    {
+        var replies = 0;
+        using var handler = new AgentHandler(_ => Task.FromResult(++replies == 1
+            ? JsonNode.Parse("""{"choices":[{"message":{"role":"assistant","content":"I will start now."}}]}""")!.AsObject()
+            : JsonNode.Parse("""{"choices":[{"message":{"role":"assistant","tool_calls":[{"id":"c","type":"function","function":{"name":"finish","arguments":"{}"}}]}}]}""")!.AsObject()));
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://example.test/") };
+        var coordinator = new MetaInspectionCoordinator(new MetaChatClient(http, Options.Create(new AiOptions())), Options.Create(new OrchestrationOptions()));
+        var usage = await coordinator.RunAsync("Inspect", InspectionTools.Definitions,
+            (_, _, _) => Task.FromResult(new AgentToolResult(true, "verified")), TestContext.Current.CancellationToken);
+        Assert.Equal(2, usage.Calls);
     }
 
     [Fact]
