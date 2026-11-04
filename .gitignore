@@ -34,3 +34,6 @@ Thumbs.db
 .build-user/
 .npm-cache/
 backend/tools/sam31/node_modules/
+
+# Rendered demo video (large binary)
+video/
