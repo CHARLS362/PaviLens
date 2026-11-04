@@ -7,6 +7,27 @@
 
 New: [agent orchestration, native Meta SAM 3.1, regional profiles and geographic maps](backend/docs/ORCHESTRATION.md). See the [implementation and frontend review report (Spanish)](docs/REPORTE_IMPLEMENTACION.es.md) for verified scope and remaining work.
 
+## Demo video
+
+[![PaveLens AI demo: one photo becomes a measured, priced and planned road repair. Click to watch (1:52)](docs/media/demo-thumbnail.jpg)](docs/media/PaveLens_AI_demo.mp4)
+
+**[▶ Watch the demo (1:52, MP4)](docs/media/PaveLens_AI_demo.mp4)** · [YouTube](https://youtu.be/bFq20ClnQ1o) · [English subtitles (.srt)](docs/media/PaveLens_AI_demo.en.srt)
+
+The video shows a real run with the Meta models: the 89-second analysis is sped up and labelled as such, and the detour planner runs on the synthetic demo network of central Puno.
+
+| Time | Section |
+|---|---|
+| 0:00 | Intro: SAM 3.1 outlines and measures every distress |
+| 0:09 | The problem in Puno, Peru |
+| 0:27 | One photo, one scale, one click |
+| 0:32 | The real analysis run |
+| 0:36 | 01 See: Meta SAM 3.1 segmentation |
+| 0:44 | 02 Reason: the Muse Wonder agent and its independent reviewer |
+| 1:01 | 03 Compute: PCI, budget and live recalculation from a field depth |
+| 1:14 | 04 Plan: detour planning with a Wardrop traffic equilibrium |
+| 1:28 | The result |
+| 1:39 | Open source on GitHub |
+
 ![An angled photo of a street: every distress outlined and measured in metres, with the PCI, the Meta AI pipeline trace and the quantities](docs/screenshots/inspection.png)
 
 ## The problem
@@ -92,6 +113,8 @@ META_API_KEY=paste-your-meta-api-key-here
 
 Get a key at https://dev.meta.ai. Skip this step to run the free **demo mode** instead.
 
+> 🔒 **Keep your key private.** `.env` is git-ignored, so `git add .` never picks it up. Never paste the key into `appsettings.json`, the code, an issue or a screenshot. If a key is ever exposed, revoke it at https://dev.meta.ai and create a new one.
+
 **3. Start**
 
 Windows (PowerShell):
@@ -109,6 +132,8 @@ bash start.sh
 The script checks the prerequisites, installs the packages on the first run (1–3 minutes) and starts the API and the web app.
 
 **4. Open http://localhost:4200**, click **New inspection**, upload a real road photo, set the scale and click **Analyse**.
+
+**5. Check that the real models are on.** The top bar shows the model names (for example *SAM 3.1 · Muse Wonder 1.0*) instead of *Demo mode*, and http://localhost:5000/api/v1/ai/status reports `Meta`. Still in demo mode? The API reads `.env` only on startup: close the API window and run the start script again.
 
 - API: http://localhost:5000, with interactive docs at `/scalar`.
 - With real Meta models, use a real road photo: the three built-in sample scenes are drawings meant for demo mode.

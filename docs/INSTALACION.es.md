@@ -2,7 +2,67 @@
 
 De un clon recién descargado a PaveLens funcionando en unos cinco minutos. El modo demostración no necesita claves ni tiene costo. Los modelos reales de Meta necesitan una o dos claves en un archivo `.env`.
 
-*In English: [GETTING_STARTED.md](GETTING_STARTED.md)*
+*In English: [GETTING_STARTED.md](GETTING_STARTED.md)* · Cuando ya funcione, la **[guía de uso](USER_GUIDE.md)** (en inglés) explica cada pantalla.
+
+## Camino rápido: solo tu clave de Meta
+
+Si ya tienes Git, el SDK de .NET 10 y Node.js 22.22+ (ver [Requisitos](#1-requisitos)), estos son los únicos pasos:
+
+**1. Clonar el repositorio**
+
+```bash
+git clone https://github.com/CHARLS362/PaviLens.git
+```
+
+```bash
+cd PaviLens
+```
+
+**2. Crear `.env` y pegar tu clave de Meta.** Copia la plantilla:
+
+Windows (PowerShell):
+
+```powershell
+Copy-Item .env.example .env
+```
+
+macOS / Linux:
+
+```bash
+cp .env.example .env
+```
+
+Abre `.env` con cualquier editor de texto, busca la línea `META_API_KEY=` y pega tu clave después del `=`, sin espacios ni comillas:
+
+```dotenv
+META_API_KEY=pega-aqui-tu-clave-de-meta
+```
+
+Guarda el archivo y deja las demás líneas como están. ¿Aún no tienes clave? Créala en https://dev.meta.ai. Si te saltas este paso, PaveLens corre en **modo demostración**, gratis.
+
+> 🔒 Git ignora `.env`, así que tu clave nunca llega a GitHub. No la pegues en `appsettings.json` ni en el código. Si se expone, revócala en https://dev.meta.ai y crea otra.
+
+**3. Arrancar PaveLens**
+
+Windows (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start.ps1
+```
+
+macOS / Linux:
+
+```bash
+bash start.sh
+```
+
+La primera vez instala los paquetes (de 1 a 3 minutos). En Windows se abren dos ventanas nuevas, una para la API y otra para la web. Déjalas abiertas mientras uses PaveLens: cerrarlas lo detiene.
+
+**4. Abrir http://localhost:4200.** La barra superior debe mostrar los modelos de Meta, por ejemplo *SAM 3.1 · Muse Wonder 1.0*, en lugar de *Modo demostración*. Pulsa **Nueva inspección**, sube una foto real de una pista, fija la escala y pulsa **Analizar**. La [guía de uso](USER_GUIDE.md) recorre cada paso.
+
+> Con los modelos reales de Meta, sube una **foto real de una pista**. Las tres escenas de muestra son dibujos: SAM suele no encontrar daños en ellas y el análisis termina como *Falló* con ese motivo. Están pensadas para el modo demostración.
+
+El resto de la página explica cada paso en detalle, las demás opciones de configuración y los problemas frecuentes.
 
 ## 1. Requisitos
 
@@ -90,7 +150,7 @@ En el primer arranque la API crea la base SQLite (`backend/src/PaveLens.Api/App_
 1. Elige una inspección a la izquierda: la foto muestra cada deterioro delineado y medido en metros, con el PCI y los metrados.
 2. Pulsa un código en el **registro de deterioros** (panel derecho): la foto se acerca a él.
 3. Abre la pestaña **Presupuesto**: análisis de precios unitarios calculado por código a partir de las áreas medidas.
-4. **Nueva inspección** → *Prueba con una escena de muestra* → **Analizar**: el flujo completo se ejecuta otra vez y el panel de agentes muestra cada llamada a herramienta.
+4. **Nueva inspección** → *Prueba con una escena de muestra* → **Analizar**: el flujo completo se ejecuta otra vez y el panel de agentes muestra cada llamada a herramienta. (Las escenas de muestra son para el modo demostración; con los modelos reales de Meta, sube una foto real).
 5. **Planificación de desvíos** (barra superior): cierra un carril en la red de demostración de Puno y compara franjas horarias.
 6. **ES / EN** cambia el idioma; **Accesibilidad** ajusta tamaño de texto, contraste, movimiento y una paleta para daltonismo.
 
@@ -193,4 +253,6 @@ Las pruebas siempre corren en modo demostración e ignoran `.env`, así que nunc
 | La API se cierra con `Ai:Meta:...:ApiKey es obligatorio` | Falta una clave en `.env` para el proveedor o servicio elegido. |
 | Los modelos reales responden 401/403 | La clave es incorrecta o la cuenta no tiene acceso al modelo; pruébala en la consola del proveedor. |
 | SAM 3.1: no encuentra `node` o `decode.mjs` | Ejecuta `npm ci` en `backend/tools/sam31` y verifica que `node` esté en el PATH. |
+| Una inspección falla con *… no encontró deterioros en la foto* | SAM no vio daños. Es lo esperado con las escenas dibujadas en modo Meta. Con tu propia foto, acércate más, usa luz pareja y deja el daño en la mitad inferior del encuadre. Ver la [guía de uso](USER_GUIDE.md#9-taking-good-photos). |
+| La barra superior sigue diciendo *Modo demostración* después de poner la clave | La API lee `.env` solo al arrancar: cierra la ventana de la API y arráncala otra vez. Comprueba que el archivo se llame exactamente `.env` (no `.env.txt`) y esté junto a `README.md`. En Windows, activa *Ver → Extensiones de nombre de archivo* para ver la extensión real. |
 | Empezar de cero con datos de demostración limpios | Detén la API y borra `backend/src/PaveLens.Api/App_Data/`; se recrea en el siguiente arranque. |

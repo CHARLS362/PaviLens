@@ -5,6 +5,27 @@
 
 *Read in English: [README.md](README.md)*
 
+## Video de demostración
+
+[![Demo de PaveLens AI: una foto se convierte en una reparación medida, presupuestada y planificada. Haz clic para verla (1:52)](docs/media/demo-thumbnail.jpg)](docs/media/PaveLens_AI_demo.mp4)
+
+**[▶ Ver la demo (1:52, MP4)](docs/media/PaveLens_AI_demo.mp4)** · [YouTube](https://youtu.be/bFq20ClnQ1o) · [Subtítulos en inglés (.srt)](docs/media/PaveLens_AI_demo.en.srt)
+
+El video está narrado en inglés y muestra una ejecución real con los modelos de Meta. El análisis de 89 segundos aparece acelerado y rotulado como tal, y el planificador de desvíos corre sobre la red sintética de demostración del centro de Puno.
+
+| Minuto | Sección |
+|---|---|
+| 0:00 | Apertura: SAM 3.1 delinea y mide cada deterioro |
+| 0:09 | El problema en Puno, Perú |
+| 0:27 | Una foto, una escala, un clic |
+| 0:32 | El análisis real |
+| 0:36 | 01 Ver: segmentación con Meta SAM 3.1 |
+| 0:44 | 02 Razonar: el agente Muse Wonder y su revisor independiente |
+| 1:01 | 03 Calcular: PCI, presupuesto y recálculo con la profundidad medida en campo |
+| 1:14 | 04 Planificar: desvíos con equilibrio de tránsito de Wardrop |
+| 1:28 | El resultado |
+| 1:39 | Código abierto en GitHub |
+
 ![Foto oblicua de una calle: cada deterioro delineado y medido en metros, con el PCI, la traza del pipeline Meta AI y los metrados](docs/screenshots/inspection.png)
 
 Más capturas (presupuesto y planificador de desvíos) en el [README en inglés](README.md#screenshots). Están en modo demostración, que la app indica en cada pantalla.
@@ -53,7 +74,9 @@ meta/
 
 ## Inicio rápido
 
-Requisitos: **SDK de .NET 10** y **Node.js 22.22+ o 24**. Para la demostración no hacen falta claves, servidor de base de datos ni GPU.
+Requisitos: **Git**, el **SDK de .NET 10** y **Node.js 22.22+ o 24**. No hace falta servidor de base de datos, Docker ni GPU. Lo único que agregas es tu clave de la API de Meta.
+
+**1. Clonar**
 
 ```bash
 git clone https://github.com/CHARLS362/PaviLens.git
@@ -63,10 +86,28 @@ git clone https://github.com/CHARLS362/PaviLens.git
 cd PaviLens
 ```
 
-Windows:
+**2. Poner tu clave de Meta.** Copia la plantilla a `.env`:
 
 ```powershell
-.\start.ps1
+Copy-Item .env.example .env
+```
+
+(macOS / Linux: `cp .env.example .env`). Abre `.env` con cualquier editor de texto, pega tu clave después de `META_API_KEY=`, sin espacios ni comillas, y guarda:
+
+```dotenv
+META_API_KEY=pega-aqui-tu-clave-de-meta
+```
+
+Crea una clave en https://dev.meta.ai. Si te saltas este paso, PaveLens corre en **modo demostración**, gratis y sin claves.
+
+> 🔒 **Tu clave es privada.** Git ignora `.env`, así que `git add .` nunca la sube. No la pegues en `appsettings.json`, en el código, en un issue ni en una captura. Si alguna vez se expone, revócala en https://dev.meta.ai y crea otra.
+
+**3. Arrancar**
+
+Windows (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start.ps1
 ```
 
 macOS / Linux:
@@ -75,12 +116,18 @@ macOS / Linux:
 bash start.sh
 ```
 
-El script comprueba los requisitos, crea `.env` a partir de `.env.example` (modo demostración), instala los paquetes del frontend la primera vez y arranca ambas partes.
+El script comprueba los requisitos, instala los paquetes la primera vez (de 1 a 3 minutos) y arranca la API y la aplicación web. En Windows se abren dos ventanas, una para la API y otra para la web: déjalas abiertas mientras uses PaveLens.
 
-- Web: http://localhost:4200 (redirige `/api` al backend)
-- API: http://localhost:5000, documentación interactiva en `/scalar`
+**4. Abrir http://localhost:4200**, pulsar **Nueva inspección**, subir una foto real de una pista, fijar la escala y pulsar **Analizar**.
 
-Guía paso a paso, arranque manual, claves reales de Meta y problemas frecuentes: **[docs/INSTALACION.es.md](docs/INSTALACION.es.md)**.
+- API: http://localhost:5000, con documentación interactiva en `/scalar`.
+- Con los modelos reales de Meta usa una foto real: las tres escenas de muestra son dibujos pensados para el modo demostración.
+
+**5. Comprobar que usa los modelos reales.** La barra superior muestra los nombres de los modelos (por ejemplo *SAM 3.1 · Muse Wonder 1.0*) en lugar de *Modo demostración*, y http://localhost:5000/api/v1/ai/status indica `Meta`. ¿Sigue en demostración? La API lee `.env` solo al arrancar: cierra la ventana de la API y vuelve a ejecutar el script.
+
+📘 Manuales:
+- **[docs/INSTALACION.es.md](docs/INSTALACION.es.md)**: instalación paso a paso, arranque manual, todas las opciones de configuración y problemas frecuentes.
+- **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** (en inglés): cómo usar cada pantalla, desde la foto hasta el presupuesto y el plan de desvíos.
 
 En desarrollo el backend usa SQLite, aplica las migraciones y carga tres inspecciones de demostración: Jr. Lima (foto oblicua calibrada), Av. El Sol (bache) y Jr. Arequipa (piel de cocodrilo).
 

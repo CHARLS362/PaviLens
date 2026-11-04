@@ -40,6 +40,8 @@ META_API_KEY=paste-your-meta-api-key-here
 
 Save the file. Leave every other line as it is. Don't have a key yet? Create one at https://dev.meta.ai. If you skip this step, PaveLens runs in free **demo mode**.
 
+> 🔒 `.env` is git-ignored, so your key never reaches GitHub. Never paste it into `appsettings.json` or the code. If it is ever exposed, revoke it at https://dev.meta.ai and create a new one.
+
 **3. Start PaveLens**
 
 Windows (PowerShell):
@@ -252,5 +254,5 @@ The tests always run in demo mode and ignore `.env`, so they never spend credits
 | Real models return 401/403 | The key is wrong or the account has no access to the model; try it in the provider's console. |
 | SAM 3.1: `node` or `decode.mjs` not found | Run `npm ci` in `backend/tools/sam31` and make sure `node` is on the PATH. |
 | An inspection fails with *… found no distress in the photo* | SAM saw no damage. Expected with the drawn sample scenes in Meta mode; with your own photo, get closer, use even light and keep the damage in the lower half of the frame. See the [User guide](USER_GUIDE.md#9-taking-good-photos). |
-| The top bar still says *Demo mode* after adding the key | The API reads `.env` only on startup: close the API window and start it again. Check that the file is named exactly `.env` (not `.env.txt`) and sits next to `README.md`. |
+| The top bar still says *Demo mode* after adding the key | The API reads `.env` only on startup: close the API window and start it again. Check that the file is named exactly `.env` (not `.env.txt`) and sits next to `README.md`. On Windows, turn on *View → File name extensions* to see the real extension. |
 | Start over with clean demo data | Stop the API and delete `backend/src/PaveLens.Api/App_Data/`; it is recreated on the next start. |

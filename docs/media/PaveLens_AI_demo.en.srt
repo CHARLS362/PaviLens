@@ -1,0 +1,223 @@
+1
+00:00:01,053 --> 00:00:02,480
+warm] PaveLens outlined nine
+
+2
+00:00:02,520 --> 00:00:04,080
+defects in this intersection,
+
+3
+00:00:04,120 --> 00:00:05,520
+measured each one in metres,
+
+4
+00:00:05,560 --> 00:00:07,248
+and priced the repair.
+
+5
+00:00:07,288 --> 00:00:09,040
+From a single photo.
+
+6
+00:00:09,080 --> 00:00:10,293
+In Puno, Peru,
+
+7
+00:00:10,333 --> 00:00:12,320
+nearly four thousand metres up,
+
+8
+00:00:12,360 --> 00:00:13,920
+nightly frost and extreme
+
+9
+00:00:13,960 --> 00:00:15,800
+sun tear roads apart.
+
+10
+00:00:15,840 --> 00:00:17,880
+Yet inspections are still done on foot,
+
+11
+00:00:17,920 --> 00:00:19,520
+with a tape and a notebook.
+
+12
+00:00:19,560 --> 00:00:21,440
+Severity is a judgement call,
+
+13
+00:00:21,480 --> 00:00:23,000
+budgets can't be audited,
+
+14
+00:00:23,040 --> 00:00:25,440
+and every repair closure pushes traffic onto
+
+15
+00:00:25,480 --> 00:00:27,520
+streets with no room to spare.
+
+16
+00:00:27,560 --> 00:00:29,360
+Meet PaveLens AI.
+
+17
+00:00:29,400 --> 00:00:31,120
+One photo. One scale.
+
+18
+00:00:31,160 --> 00:00:34,760
+One click. Meta SAM 3.1 takes plain words,
+
+19
+00:00:34,800 --> 00:00:36,360
+like pothole or crack,
+
+20
+00:00:36,400 --> 00:00:37,360
+and returns the true
+
+21
+00:00:37,400 --> 00:00:39,320
+outline of every distress.
+
+22
+00:00:39,360 --> 00:00:41,680
+Each outline is projected onto the road plane,
+
+23
+00:00:41,720 --> 00:00:44,320
+so areas come out in real square metres.
+
+24
+00:00:44,360 --> 00:00:45,760
+Then Muse Wonder takes
+
+25
+00:00:45,800 --> 00:00:47,200
+charge as the coordinator.
+
+26
+00:00:47,240 --> 00:00:49,400
+It calls nine specialised tools,
+
+27
+00:00:49,440 --> 00:00:52,440
+classifies each distress by ASTM severity,
+
+28
+00:00:52,480 --> 00:00:54,320
+and writes the repair protocol.
+
+29
+00:00:54,360 --> 00:00:55,920
+Every call is traced:
+
+30
+00:00:55,960 --> 00:00:58,120
+model, time and tokens.
+
+31
+00:00:58,160 --> 00:00:59,920
+And an independent reviewer flags
+
+32
+00:00:59,960 --> 00:01:01,600
+what an engineer should check.
+
+33
+00:01:01,640 --> 00:01:03,280
+Here's what makes it trustworthy:
+
+34
+00:01:03,320 --> 00:01:05,467
+the AI never invents a number.
+
+35
+00:01:05,507 --> 00:01:06,613
+The condition index,
+
+36
+00:01:06,653 --> 00:01:08,760
+the quantities and the budget in soles
+
+37
+00:01:08,800 --> 00:01:11,160
+all come from tested engineering code.
+
+38
+00:01:11,200 --> 00:01:12,880
+Enter a depth measured on site,
+
+39
+00:01:12,920 --> 00:01:14,640
+and everything recalculates.
+
+40
+00:01:14,680 --> 00:01:15,880
+Need to close the street?
+
+41
+00:01:15,920 --> 00:01:18,480
+PaveLens solves a Wardrop traffic equilibrium
+
+42
+00:01:18,520 --> 00:01:20,120
+on a demo network of Puno,
+
+43
+00:01:20,160 --> 00:01:22,320
+and finds the cheapest time to work.
+
+44
+00:01:22,360 --> 00:01:23,840
+Here, working at night cuts the
+
+45
+00:01:23,880 --> 00:01:25,440
+cost to drivers from four hundred
+
+46
+00:01:25,480 --> 00:01:27,920
+and fifty-six soles to seventy-three.
+
+47
+00:01:27,960 --> 00:01:29,440
+The result: a survey that
+
+48
+00:01:29,480 --> 00:01:31,800
+starts with a ninety-second analysis,
+
+49
+00:01:31,840 --> 00:01:33,880
+consistent from one inspector to the next,
+
+50
+00:01:33,920 --> 00:01:36,480
+and auditable down to the last square metre.
+
+51
+00:01:36,520 --> 00:01:37,520
+Built for cities with a
+
+52
+00:01:37,560 --> 00:01:39,347
+phone and a small budget.
+
+53
+00:01:39,387 --> 00:01:42,720
+PaveLens AI. Meta models see the damage.
+
+54
+00:01:42,760 --> 00:01:44,200
+Engineering measures it,
+
+55
+00:01:44,240 --> 00:01:46,120
+prices it, and plans the work.
+
+56
+00:01:46,160 --> 00:01:48,440
+Open source, on GitHub.
