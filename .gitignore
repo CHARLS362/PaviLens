@@ -37,3 +37,6 @@ backend/tools/sam31/node_modules/
 
 # Rendered demo video (large binary)
 video/
+
+# Private video recording plan (kept locally only)
+docs/PLAN_GRABACION_VIDEO_DEMO.md
