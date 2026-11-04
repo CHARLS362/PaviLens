@@ -43,7 +43,7 @@ public sealed class PriceList
     [Range(0, 100)] public decimal IgvPct { get; set; } = 18m;
 }
 
-/// <summary>Climate context of the work zone (PLANIFICACION §5.C). Explanatory; it does not change the quantities.</summary>
+/// <summary>Climate context of the work zone. Explanatory; it does not change the quantities.</summary>
 public sealed class RegionProfile
 {
     [Required] public string Name { get; set; } = "Puno (altiplano)";

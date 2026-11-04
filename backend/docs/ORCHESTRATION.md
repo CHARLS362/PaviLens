@@ -1,7 +1,5 @@
 # Agent orchestration, regional profiles and city maps
 
-Spanish technical report: [single-key Meta orchestration, activation and operational gaps](../../docs/ORQUESTACION_AGENTICA_META.es.md).
-
 Implemented in the inspection worker. Existing inspections and the fixed demo network remain readable. No schema migration is required: execution evidence and the regional snapshot extend the existing `TraceJson` document.
 
 ## Run locally

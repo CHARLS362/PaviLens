@@ -5,7 +5,7 @@
 
 *Leer en español: [README.es.md](README.es.md)*
 
-New: [agent orchestration, native Meta SAM 3.1, regional profiles and geographic maps](backend/docs/ORCHESTRATION.md). See the [implementation and frontend review report (Spanish)](docs/REPORTE_IMPLEMENTACION.es.md) for verified scope and remaining work.
+New: [agent orchestration, native Meta SAM 3.1, regional profiles and geographic maps](backend/docs/ORCHESTRATION.md).
 
 ## Demo video
 
@@ -169,7 +169,6 @@ meta/
 - [backend/README.md](backend/README.md): running, configuration and API reference.
 - [backend/docs/ARCHITECTURE.md](backend/docs/ARCHITECTURE.md): layers, pipeline, engineering models and storage.
 - [backend/docs/ai-contracts.md](backend/docs/ai-contracts.md): contracts with SAM 3 and Muse Wonder.
-- In Spanish: [tematica.md](tematica.md) (product and user flow), [PLANIFICACION.md](PLANIFICACION.md) (plane projection, PCI, quantities, MTC unit prices, BPR + Wardrop) and [DESAFIO.md](DESAFIO.md) (hackathon rules and submission).
 
 ## Tests
 

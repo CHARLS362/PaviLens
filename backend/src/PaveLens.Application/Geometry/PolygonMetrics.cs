@@ -3,7 +3,7 @@ using PaveLens.Domain.Inspections;
 namespace PaveLens.Application.Geometry;
 
 /// <summary>
-/// Area, centroid and second moments of a simple polygon by Green's theorem (PLANIFICACION §4.B–C).
+/// Area, centroid and second moments of a simple polygon by Green's theorem (backend/docs/ARCHITECTURE.md, Measurement).
 /// Moments are integrated over the surface, so they do not depend on how many vertices the mask has.
 /// </summary>
 public static class PolygonMetrics

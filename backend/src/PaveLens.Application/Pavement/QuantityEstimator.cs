@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 
 namespace PaveLens.Application.Pavement;
 
-/// <summary>Patch quantities from the ground measurement (PLANIFICACION §4.D) and ASTM pothole severity.</summary>
+/// <summary>Patch quantities from the ground measurement and ASTM pothole severity.</summary>
 public sealed class QuantityEstimator(IOptions<PavementOptions> options)
 {
     private readonly PavementOptions _options = options.Value;

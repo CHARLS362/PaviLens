@@ -37,7 +37,7 @@ public sealed record PciResult(
     IReadOnlyList<CdvIteration> Iterations);
 
 /// <summary>
-/// Pavement Condition Index after ASTM D6433 (PLANIFICACION §5.A). The standard publishes the deduct and
+/// Pavement Condition Index after ASTM D6433 (backend/docs/ARCHITECTURE.md, Engineering models). The standard publishes the deduct and
 /// correction curves as charts; the anchors below are an approximate digitisation, interpolated linearly in
 /// log10(density). Results are labelled as approximate.
 /// </summary>
@@ -103,7 +103,7 @@ public static class PciCalculator
             isPartial, Math.Round(m, 2), deducts, iterations);
     }
 
-    /// <summary>Rating band and intervention from PLANIFICACION §5.A.</summary>
+    /// <summary>Rating band and intervention from ASTM D6433.</summary>
     public static (string Rating, string Treatment) Classify(double pci) => pci switch
     {
         >= 85 => ("Excelente", "Mantenimiento preventivo y sellado de microfisuras"),

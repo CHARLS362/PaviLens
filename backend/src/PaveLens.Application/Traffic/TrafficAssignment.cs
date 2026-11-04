@@ -13,7 +13,7 @@ public sealed record AssignmentResult(
 
 /// <summary>
 /// Static user-equilibrium assignment (Wardrop's first principle) with BPR link delays, solved by
-/// Frank-Wolfe on Beckmann's convex program (PLANIFICACION §6): all-or-nothing loads on Dijkstra
+/// Frank-Wolfe on Beckmann's convex program: all-or-nothing loads on Dijkstra
 /// shortest paths, bisection line search, stop at a relative gap below the tolerance.
 /// </summary>
 public static class TrafficAssignment

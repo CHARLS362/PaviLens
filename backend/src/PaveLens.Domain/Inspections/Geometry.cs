@@ -84,7 +84,7 @@ public sealed record GroundCalibration
     public double LengthM { get; }
 }
 
-/// <summary>Ground-plane geometry of a distress mask, in metres (see PLANIFICACION §4.B–C).</summary>
+/// <summary>Ground-plane geometry of a distress mask, in metres (backend/docs/ARCHITECTURE.md, Measurement).</summary>
 public sealed record DistressMeasurement(
     double AreaM2,
     double PerimeterM,
@@ -93,7 +93,7 @@ public sealed record DistressMeasurement(
     double Eccentricity,
     double OrientationDeg);
 
-/// <summary>Patch quantities (PLANIFICACION §4.D): rectangular cut, volume and hot-mix mass.</summary>
+/// <summary>Patch quantities: rectangular cut, volume and hot-mix mass.</summary>
 public sealed record DistressQuantities(
     double DepthM,
     DepthSource DepthSource,

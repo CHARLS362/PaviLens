@@ -9,7 +9,7 @@ public readonly record struct GroundPoint(double X, double Y);
 public sealed class GroundProjectionException(string message) : Exception(message);
 
 /// <summary>
-/// Maps normalized image coordinates to metres on the road plane (PLANIFICACION §4.A).
+/// Maps normalized image coordinates to metres on the road plane (backend/docs/ARCHITECTURE.md, Ground projection).
 /// Nadir photos use a constant scale; oblique photos use a homography from a 4-point calibration.
 /// </summary>
 public abstract class GroundProjection

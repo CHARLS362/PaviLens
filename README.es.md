@@ -32,12 +32,7 @@ Más capturas (presupuesto y planificador de desvíos) en el [README en inglés]
 
 ## Documentación
 
-- [Reporte técnico de orquestación con una clave de Meta](docs/ORQUESTACION_AGENTICA_META.es.md): arquitectura, activación directa, contratos, límites y validación pendiente.
-- [Reporte de implementación, revisión del frontend y pendientes para el hackathon](docs/REPORTE_IMPLEMENTACION.es.md).
 - [Orquestación de agentes, SAM 3.1 directo, perfiles regionales y mapas](backend/docs/ORCHESTRATION.md): configuración, evidencia y límites actuales.
-- [tematica.md](tematica.md): el producto, el problema que resuelve y el flujo de usuario.
-- [DESAFIO.md](DESAFIO.md): bases del hackathon, rúbrica, textos de postulación y guion del video.
-- [PLANIFICACION.md](PLANIFICACION.md): plan y fundamentos (proyección al plano, PCI, cubicaje, APU MTC, BPR + Wardrop).
 - [backend/README.md](backend/README.md): ejecución, configuración y API.
 - [backend/docs/ARCHITECTURE.md](backend/docs/ARCHITECTURE.md): capas, pipeline, modelos de ingeniería y almacenamiento.
 - [backend/docs/ai-contracts.md](backend/docs/ai-contracts.md): contratos con SAM 3 y Muse Wonder.
