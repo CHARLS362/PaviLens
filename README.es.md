@@ -1,77 +1,83 @@
 # PaveLens AI 🛣️
 
 > **Meta Global AI Developer Hackathon · Indie Developer Track**
-> Diagnóstico de pavimentos a partir de una foto: Meta SAM 3 segmenta cada deterioro, la geometría lo lleva a metros reales y PaveLens calcula PCI (ASTM D6433), cubicaje, presupuesto (APU) y el impacto de cerrar el tramo en el tráfico. Muse Wonder clasifica, explica y planifica la obra.
+> De una foto de la pista a una reparación medida, presupuestada y planificada. Meta SAM 3 delinea cada deterioro, la geometría lo lleva a metros reales, el código calcula el Índice de Condición del Pavimento (PCI, ASTM D6433), el material y el presupuesto, y Meta Muse Wonder diagnostica, explica y planifica la obra: el desvío mientras se cierra un carril y la ruta de la cuadrilla en la jornada.
 
 *Read in English: [README.md](README.md)*
 
+![Foto oblicua de una calle: cada deterioro delineado y medido en metros, con el PCI, la traza del pipeline Meta AI y los metrados](docs/screenshots/inspection.png)
+
+**Contenido:** [Qué es](#qué-es) · [Cómo funciona](#cómo-funciona) · [Inicio rápido](#inicio-rápido) · [Configuración](#configuración-env) · [Solución de problemas](#solución-de-problemas) · [Estructura](#estructura) · [Pruebas](#pruebas) · [Documentación](#documentación)
+
 ## Video de demostración
 
-[![Demo de PaveLens AI: una foto se convierte en una reparación medida, presupuestada y planificada. Haz clic para verla (1:52)](docs/media/demo-thumbnail.jpg)](docs/media/PaveLens_AI_demo.mp4)
+[![Demo de PaveLens AI. Haz clic para verla (1:52)](docs/media/demo-thumbnail.jpg)](docs/media/PaveLens_AI_demo.mp4)
 
 **[▶ Ver la demo (1:52, MP4)](docs/media/PaveLens_AI_demo.mp4)** · [YouTube](https://youtu.be/bFq20ClnQ1o) · [Subtítulos en inglés (.srt)](docs/media/PaveLens_AI_demo.en.srt)
 
-El video está narrado en inglés y muestra una ejecución real con los modelos de Meta. El análisis de 89 segundos aparece acelerado y rotulado como tal, y el planificador de desvíos corre sobre la red sintética de demostración del centro de Puno.
+El video está narrado en inglés y muestra una ejecución real con los modelos de Meta. El análisis de 89 segundos aparece acelerado y rotulado como tal.
 
-| Minuto | Sección |
+## Qué es
+
+La inspección de pistas todavía se hace a pie, con wincha y libreta. La gravedad cambia de un inspector a otro, el material del parchado se calcula a ojo y nadie puede contrastar un presupuesto con el daño. Cuando una cuadrilla cierra un carril, nadie modela a dónde se va el tránsito. Municipios como **Puno, Perú** (3 827 m s. n. m., heladas cada noche, radiación UV extrema) enfrentan esto con presupuestos de mantenimiento muy pequeños.
+
+PaveLens es una aplicación web para el equipo de mantenimiento vial de un municipio:
+
+- el **inspector** toma una foto de la calle y obtiene el daño medido en metros, el PCI y una reparación con precio;
+- el **ingeniero** revisa el diagnóstico, ingresa la profundidad medida en campo y se recalculan el metrado y el presupuesto;
+- el **planificador** ve qué le pasa al tránsito si se cierra la calle y en qué horario cuesta menos;
+- la **cuadrilla** recibe el orden de las obras del día, el cierre de cada una y la ruta por calles reales.
+
+Una regla recorre toda la aplicación: **la IA decide y explica; el código mide y calcula.** Las áreas, las toneladas, los precios y el PCI nunca los escribe un modelo de lenguaje, así que una alucinación no puede inflar un presupuesto.
+
+## Cómo funciona
+
+```
+ Foto + escala ──► Meta SAM 3 / 3.1 ──► Metros ──► Muse Wonder ──► PCI, metrado, presupuesto ──► Plan de tránsito y cuadrilla
+ (subida o         un polígono por      proyección   código, tipo,    ASTM D6433, mezcla en       desvíos de Wardrop,
+  cámara)          deterioro            al suelo     gravedad, obra   toneladas, partidas MTC      ruta en un mapa real
+```
+
+1. **Foto y escala.** En una foto cenital basta el ancho visible de la calzada. En una foto oblicua el inspector marca las 4 esquinas de un rectángulo conocido y PaveLens resuelve una homografía; una cuadrícula de 1 m sobre la foto lo confirma.
+2. **Segmentación (Meta SAM 3 o 3.1).** La foto se envía con los conceptos `pothole`, `alligator crack`, `longitudinal crack`, `transverse crack` y `rutting`. Cada deterioro vuelve como un polígono, no como una caja.
+3. **Medición.** Cada polígono se proyecta al suelo: área, perímetro, largo × ancho. Las pruebas comparan cada máscara de demostración con su área real, con error menor al 1 %.
+4. **Diagnóstico (Meta Muse Wonder).** Un coordinador de agentes llama a herramientas verificadas y a especialistas (diagnóstico, movilidad), y un revisor independiente controla el resultado. El modelo ve la foto y las medidas ya calculadas y devuelve código, gravedad, hallazgo y reparación en JSON, que se valida con un intento de autocorrección. Si algo queda abierto, la inspección queda en *Requiere revisión* y la pantalla indica el siguiente paso.
+5. **PCI y presupuesto.** PCI según ASTM D6433 (marcado como parcial si la foto cubre menos de una unidad de muestreo de 135 m²). Parches con corte rectangular, volumen, toneladas de mezcla asfáltica en caliente y presupuesto con partidas del MTC en soles (PEN), gastos generales, utilidad e IGV. Una profundidad medida en campo recalcula todo.
+6. **Planificación de desvíos.** Cierre de un carril en la red de demostración del centro de Puno: equilibrio de tránsito de Wardrop (Frank-Wolfe + BPR) por horario, horas-vehículo perdidas, costo social y un plan de manejo de tránsito escrito por Muse Wonder.
+7. **Mapa de ciudades.** Calles reales de OpenStreetMap en la zona que elijas, con desvíos de referencia alrededor de un tramo cerrado.
+8. **Ruta de mantenimiento.** Todas las inspecciones en un mapa, coloreadas por su PCI. Eliges las obras del día:
+   - el código calcula el orden más corto (vecino más cercano + 2-opt);
+   - Meta Muse Wonder decide el orden final, el cierre y el horario de cada obra y los riesgos, y el código valida su respuesta;
+   - la ruta se dibuja animada sobre calles reales, con las zonas de obra marcadas.
+
+   **Por defecto usa OpenStreetMap (sin clave ni cuenta); Google Maps es opcional.**
+
+Todo funciona en **español e inglés**, tiene un panel de accesibilidad (tamaño de texto, alto contraste, menos movimiento, paleta para daltonismo) y se usa desde el celular (cámara, zoom con dos dedos).
+
+Cada inspección muestra el panel **Pipeline Meta AI**, que traza cada paso: los conceptos enviados a SAM, las máscaras devueltas, la proyección, el modelo usado, cuántos intentos necesitó su JSON y qué números salieron del código.
+
+| | |
 |---|---|
-| 0:00 | Apertura: SAM 3.1 delinea y mide cada deterioro |
-| 0:09 | El problema en Puno, Perú |
-| 0:27 | Una foto, una escala, un clic |
-| 0:32 | El análisis real |
-| 0:36 | 01 Ver: segmentación con Meta SAM 3.1 |
-| 0:44 | 02 Razonar: el agente Muse Wonder y su revisor independiente |
-| 1:01 | 03 Calcular: PCI, presupuesto y recálculo con la profundidad medida en campo |
-| 1:14 | 04 Planificar: desvíos con equilibrio de tránsito de Wardrop |
-| 1:28 | El resultado |
-| 1:39 | Código abierto en GitHub |
-
-![Foto oblicua de una calle: cada deterioro delineado y medido en metros, con el PCI, la traza del pipeline Meta AI y los metrados](docs/screenshots/inspection.png)
-
-Más capturas (presupuesto y planificador de desvíos) en el [README en inglés](README.md#screenshots). Están en modo demostración, que la app indica en cada pantalla.
-
-## Documentación
-
-- [Orquestación de agentes, SAM 3.1 directo, perfiles regionales y mapas](backend/docs/ORCHESTRATION.md): configuración, evidencia y límites actuales.
-- [backend/README.md](backend/README.md): ejecución, configuración y API.
-- [backend/docs/ARCHITECTURE.md](backend/docs/ARCHITECTURE.md): capas, pipeline, modelos de ingeniería y almacenamiento.
-- [backend/docs/ai-contracts.md](backend/docs/ai-contracts.md): contratos con SAM 3 y Muse Wonder.
-
-## Qué hace
-
-1. **Segmentación.** SAM 3 recibe la foto y los conceptos `pothole`, `alligator crack`, `longitudinal crack`, `transverse crack` y `rutting`, y devuelve un polígono por deterioro. Si dos conceptos devuelven la misma máscara, se conserva la de mayor confianza.
-2. **Medición en metros.** La foto se sube o se toma con la cámara del dispositivo. Con una foto cenital basta el ancho visible de la calzada. Para una foto oblicua se marcan en pantalla 4 esquinas de un rectángulo conocido y se calcula una homografía; una cuadrícula de 1 m proyectada sobre la foto permite verificar la calibración. Antes de analizar, la app estima la resolución en mm/px, la fisura más fina medible y la superficie evaluada. Sobre el polígono proyectado se miden área (Green), perímetro, largo × ancho orientados y excentricidad. Las pruebas verifican que cada máscara mide el área real dibujada con un error menor al 1 %.
-3. **Diagnóstico.** Muse Wonder recibe la foto y las medidas ya calculadas, y asigna código, tipo, severidad, hallazgo e intervención, más un protocolo de obra. El modelo **no** calcula áreas, cantidades ni costos: eso lo hace el código, para que una alucinación no infle un presupuesto.
-4. **PCI (ASTM D6433).** Valores deducidos por densidad, número máximo de deducidos *m* y CDV iterativo. Si la foto cubre menos de 135 m², el PCI se marca como parcial (cota superior).
-5. **Cubicaje y APU.** Corte rectangular con margen, volumen y toneladas de mezcla. Partidas MTC con precios en soles (PEN), gastos generales, utilidad e IGV, y condiciones de obra para Puno (3 827 m s. n. m.). La profundidad medida en campo reemplaza a la supuesta y recalcula todo.
-6. **Planificación de desvíos.** Cierre de carriles en una red de demostración del centro de Puno, sobre un mapa con flujo por sentido. Asignación de equilibrio de Wardrop (Frank-Wolfe + BPR) por franja (hora punta, valle, noche) y duración de la obra. Devuelve las veh·h perdidas, los tramos que absorben el desvío y el costo social en soles (Δveh·h × horas × valor del tiempo, configurable en `Traffic:*`), y recomienda la franja más barata. Muse Wonder convierte el resultado en un plan de manejo de tránsito: rutas por tipo de vehículo, señalización, fases, avisos y riesgos.
-7. **Probar sin foto.** El diálogo de nueva inspección ofrece las tres escenas de demostración con la escala ya configurada, para recorrer todo el flujo en pocos clics. En el celular, el visor admite pellizcar para hacer zoom y arrastrar con un dedo.
-8. **Español e inglés.** La interfaz cambia entre ES y EN en cualquier momento. Cada inspección y cada plan de tránsito guardan el idioma en que se redacta el informe: Muse Wonder lo recibe en el prompt y los escenarios de demostración vienen en ambos idiomas.
-9. **Accesibilidad.** El panel *Accesibilidad* de la barra superior ajusta el tamaño del texto (100, 115 o 130 %), el alto contraste, la reducción de movimiento y una paleta apta para daltonismo que además distingue la severidad con trazos. Las preferencias se guardan en el navegador y la configuración del sistema (`prefers-contrast`, `prefers-reduced-motion`, colores forzados) se aplica sola. El visor de la foto se maneja con el teclado (+, −, flechas, 0) y anuncia al lector de pantalla el deterioro seleccionado y el zoom. Pestañas, diálogos, regiones dinámicas y botones de ícono tienen ARIA, y todas las fuentes están en rem para respetar el zoom y el tamaño de texto del navegador.
-
-## Estructura
-
-```
-meta/
-├── backend/                      .NET 10, Clean Architecture
-│   ├── PaveLens.slnx
-│   ├── src/
-│   │   ├── PaveLens.Domain/          Inspección, deterioros, geometría validada
-│   │   ├── PaveLens.Application/     Casos de uso, proyección, PCI, cubicaje, APU, tráfico
-│   │   ├── PaveLens.Infrastructure/  EF Core (SQLite/PostgreSQL), blobs, cola + worker, adaptadores IA
-│   │   └── PaveLens.Api/             Minimal API /api/v1, ProblemDetails, rate limiting
-│   ├── tests/                    Pruebas unitarias e integración (xUnit v3)
-│   └── samples/                  Escenas de demostración y su generador
-├── frontend/                     Angular 22 (standalone, signals), ES/EN
-├── .env.example                  Plantilla de configuración: copiar a .env para las claves de Meta
-└── start.ps1 / start.sh          Comprueban requisitos, crean .env y arrancan API y web
-```
+| ![Zoom sobre el contorno de la piel de cocodrilo junto al presupuesto por partidas](docs/screenshots/budget.png) | ![Cierre de carril en el Jr. Lima: rutas de desvío, calles que absorben el tránsito, señalización y costos por horario](docs/screenshots/detour-planner.png) |
+| **Ver en la foto** acerca la vista a un deterioro; el presupuesto lo calcula el código con las áreas medidas. | **Planificación de desvíos**: equilibrio de Wardrop sobre la red de demostración del centro de Puno. |
 
 ## Inicio rápido
 
-Requisitos: **Git**, el **SDK de .NET 10** y **Node.js 22.22+ o 24**. No hace falta servidor de base de datos, Docker ni GPU. Lo único que agregas es tu clave de la API de Meta.
+Puedes usar la aplicación completa **sin ninguna clave**: arranca en **modo demostración**, con resultados fijos que la interfaz rotula *Modo demostración*. Después agregas una clave de Meta para usar los modelos reales.
 
-**1. Clonar**
+### 1. Requisitos
+
+| Herramienta | Versión | Compruébalo con | Descarga |
+|---|---|---|---|
+| Git | cualquiera | `git --version` | https://git-scm.com |
+| .NET SDK | **10.0.100 o superior** | `dotnet --list-sdks` | https://dotnet.microsoft.com/download/dotnet/10.0 |
+| Node.js | **22.22+ o 24 LTS** (incluye npm) | `node --version` | https://nodejs.org |
+
+No hace falta: Docker, servidor de base de datos, GPU ni servicios de pago. La API guarda los datos en un archivo SQLite local y los modelos de Meta se llaman por internet.
+
+Los puertos **5000** (API) y **4200** (aplicación web) deben estar libres. En macOS el 5000 lo ocupa *Receptor AirPlay*: desactívalo en *Ajustes del Sistema → General → AirDrop y Handoff*, o mira [Solución de problemas](#solución-de-problemas).
+
+### 2. Clonar
 
 ```bash
 git clone https://github.com/CHARLS362/PaviLens.git
@@ -81,23 +87,7 @@ git clone https://github.com/CHARLS362/PaviLens.git
 cd PaviLens
 ```
 
-**2. Poner tu clave de Meta.** Copia la plantilla a `.env`:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-(macOS / Linux: `cp .env.example .env`). Abre `.env` con cualquier editor de texto, pega tu clave después de `META_API_KEY=`, sin espacios ni comillas, y guarda:
-
-```dotenv
-META_API_KEY=pega-aqui-tu-clave-de-meta
-```
-
-Crea una clave en https://dev.meta.ai. Si te saltas este paso, PaveLens corre en **modo demostración**, gratis y sin claves.
-
-> 🔒 **Tu clave es privada.** Git ignora `.env`, así que `git add .` nunca la sube. No la pegues en `appsettings.json`, en el código, en un issue ni en una captura. Si alguna vez se expone, revócala en https://dev.meta.ai y crea otra.
-
-**3. Arrancar**
+### 3. Arrancar
 
 Windows (PowerShell):
 
@@ -111,58 +101,196 @@ macOS / Linux:
 bash start.sh
 ```
 
-El script comprueba los requisitos, instala los paquetes la primera vez (de 1 a 3 minutos) y arranca la API y la aplicación web. En Windows se abren dos ventanas, una para la API y otra para la web: déjalas abiertas mientras uses PaveLens.
+El script hace cuatro cosas:
+1. comprueba .NET 10 y Node, y se detiene con un mensaje claro si falta alguno;
+2. crea `.env` a partir de `.env.example` la primera vez;
+3. instala los paquetes la primera vez (1 a 3 minutos);
+4. arranca la API y la aplicación web. En Windows cada una se abre en su propia ventana: deja ambas abiertas.
 
-**4. Abrir http://localhost:4200**, pulsar **Nueva inspección**, subir una foto real de una pista, fijar la escala y pulsar **Analizar**.
+<details>
+<summary>Arrancar a mano (dos terminales)</summary>
 
-- API: http://localhost:5000, con documentación interactiva en `/scalar`.
-- Con los modelos reales de Meta usa una foto real: las tres escenas de muestra son dibujos pensados para el modo demostración.
+Terminal 1, la API, desde la raíz del repositorio:
 
-**5. Comprobar que usa los modelos reales.** La barra superior muestra los nombres de los modelos (por ejemplo *SAM 3.1 · Muse Wonder 1.0*) en lugar de *Modo demostración*, y http://localhost:5000/api/v1/ai/status indica `Meta`. ¿Sigue en demostración? La API lee `.env` solo al arrancar: cierra la ventana de la API y vuelve a ejecutar el script.
-
-📘 Manuales:
-- **[docs/INSTALACION.es.md](docs/INSTALACION.es.md)**: instalación paso a paso, arranque manual, todas las opciones de configuración y problemas frecuentes.
-- **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** (en inglés): cómo usar cada pantalla, desde la foto hasta el presupuesto y el plan de desvíos.
-
-En desarrollo el backend usa SQLite, aplica las migraciones y carga tres inspecciones de demostración: Jr. Lima (foto oblicua calibrada), Av. El Sol (bache) y Jr. Arequipa (piel de cocodrilo).
-
-## Modelos de Meta
-
-Los modelos se consumen por API: no hace falta GPU ni servidor propio.
-
-| Paso | Modelo | Servicio | Clave |
-|---|---|---|---|
-| Segmentación | Meta SAM 3 (Roboflow serverless) o SAM 3.1 (Meta Model API) | `PAVELENS_SEGMENTATION_SERVICE` = `Roboflow` / `Meta` | `ROBOFLOW_API_KEY`, o `META_API_KEY` para SAM 3.1 |
-| Diagnóstico, asistente, plan de tránsito y coordinador de agentes | Meta Muse Wonder, o el mejor modelo Muse que permita la clave | `https://api.meta.ai/v1`, compatible con OpenAI | `META_API_KEY` |
-
-Las claves van en un **archivo `.env` en la raíz del repositorio**, que Git ignora y se crea a partir de [`.env.example`](.env.example):
-
-```dotenv
-META_API_KEY=<clave de Meta>
+```bash
+dotnet run --project backend/src/PaveLens.Api --launch-profile http
 ```
 
-Con esa sola clave basta: el modo pasa a Meta, la segmentación usa SAM 3.1 en Meta y, al arrancar, la API pregunta a Meta qué modelos permite la clave y elige los mejores (el Muse Wonder más nuevo, si no Muse Spark; el SAM más nuevo; nunca modelos `-contributor`). Con `ROBOFLOW_API_KEY` la segmentación usa SAM 3 en Roboflow, y `META_REASONING_MODEL` fija un modelo concreto. Sin claves, el modo es `Simulation`: los resultados vienen de escenarios fijos identificados por el hash de la imagen, quedan marcados con `engine: "Simulation"` y la interfaz muestra la insignia *Modo demostración*. También sirven las variables de entorno (`Ai__Meta__Reasoning__ApiKey`...) y `dotnet user-secrets`; las claves nunca van en `appsettings.json`. Todas las opciones están en **[docs/INSTALACION.es.md](docs/INSTALACION.es.md#5-usar-los-modelos-reales-de-meta-env)**.
+Terminal 2, la aplicación web:
 
-## Hoja de ruta
+```bash
+cd frontend
+```
 
-Lo que sigue **no está implementado**; está pensado para crecer sin tocar el núcleo de cálculo:
+```bash
+npm ci
+```
 
-- Inspección por video con SAM 3.1 (seguimiento de máscaras entre cuadros) y agregación por unidad de muestreo.
-- Mapa georreferenciado de inspecciones a partir del GPS de la foto.
-- Red vial real desde OpenStreetMap en lugar de la red de demostración.
-- Validación de la segmentación contra Crack500 y RDD2022.
+```bash
+npm start
+```
+
+Si quieres poner claves, copia tú mismo `.env.example` como `.env`.
+</details>
+
+### 4. Abrir la aplicación
+
+Abre **http://localhost:4200**. La primera compilación tarda unos 30 segundos. La barra superior debe decir **Conectado**.
+
+| Qué | URL |
+|---|---|
+| Aplicación web | http://localhost:4200 |
+| Referencia de la API (Scalar) | http://localhost:5000/scalar |
+| Estado del servidor | http://localhost:5000/health |
+| Modo de IA activo | http://localhost:5000/api/v1/ai/status |
+
+La base de datos se crea en el primer arranque con tres inspecciones de demostración: Jr. Lima (foto oblicua calibrada), Av. El Sol (bache) y Jr. Arequipa (piel de cocodrilo).
+
+### 5. Pruébala
+
+1. **Nueva inspección** → elige una de las escenas de ejemplo (la escala ya viene puesta) → **Analizar**.
+2. Abre el resultado: contornos sobre la foto, PCI, metrado y presupuesto. Escribe una profundidad de campo y verás todo recalculado.
+3. **Planificación de desvíos**: cierra una calle y compara horarios.
+4. **Mantenimiento**: elige las obras del día y pulsa **Planificar la jornada con Meta** para ver la ruta en el mapa.
+
+La [guía de uso](docs/USER_GUIDE.md) explica cada pantalla.
+
+## Configuración (`.env`)
+
+Toda la configuración está en un solo archivo, **`.env` en la raíz del repositorio** (junto a este README). Git lo ignora, así que tus claves no salen de tu máquina. [`.env.example`](.env.example) es la plantilla comentada.
+
+> ⚠️ **La API lee `.env` solo al arrancar.** Después de editarlo, cierra la ventana de la API (o pulsa Ctrl+C) y vuelve a arrancar.
+
+### Usar los modelos reales de Meta
+
+Basta una clave. Consíguela en https://dev.meta.ai y ponla en `.env`:
+
+```dotenv
+META_API_KEY=pega-aqui-tu-clave-de-meta
+```
+
+Con esa clave, el modo pasa a Meta y la segmentación usa SAM 3.1 en Meta. Al arrancar, la API pregunta a Meta qué modelos permite tu clave y elige el mejor (el Muse Wonder más nuevo; si no, Muse Spark).
+
+Para comprobar que funcionó, mira cualquiera de estas dos:
+- la barra superior muestra los nombres de los modelos (por ejemplo *SAM 3.1 · Muse Wonder 1.0*) en lugar de *Modo demostración*;
+- http://localhost:5000/api/v1/ai/status indica `Meta`.
+
+Con los modelos reales, **usa una foto real de una pista**: las escenas de ejemplo son dibujos, así que SAM no encuentra daños en ellas y el análisis se detiene con un mensaje claro.
+
+### Todas las opciones
+
+| Variable | Por defecto | Qué hace |
+|---|---|---|
+| `PAVELENS_AI_PROVIDER` | `Auto` | `Auto` usa Meta si hay `META_API_KEY`; si no, modo demostración. `Simulation` fuerza el modo demostración; `Meta` exige la clave. |
+| `META_API_KEY` | vacío | Clave de Meta para Muse Wonder y, salvo que elijas otro servicio, para SAM 3.1. |
+| `META_REASONING_MODEL` | vacío | Fija un modelo (por ejemplo `muse-spark-1.3`). Vacío o `auto` elige el mejor. |
+| `PAVELENS_SEGMENTATION_SERVICE` | `Auto` | `Auto`: Roboflow si hay `ROBOFLOW_API_KEY`; si no, Meta. También `Roboflow`, `Meta` o `Sidecar`. |
+| `ROBOFLOW_API_KEY` | vacío | Clave gratuita de https://app.roboflow.com para usar SAM 3 en Roboflow. |
+| `META_SAM31_API_KEY` | vacío | Una clave aparte solo para SAM 3.1, si la tienes. |
+| `MAPS_PROVIDER` | `Osm` | El mapa que se muestra primero en Mantenimiento: `Osm` (OpenStreetMap) o `Google`. El usuario puede cambiarlo en la aplicación. |
+| `OSRM_URL` | servidor público de OSRM | Rutas por calles sobre OpenStreetMap. En producción apúntalo a tu propio servidor OSRM. |
+| `MAP_TILE_URL` | `tile.openstreetmap.org` | Teselas del mapa (`{z}/{x}/{y}`). En producción usa tu propio servidor de teselas o un proveedor. |
+| `GOOGLE_MAPS_API_KEY` | vacío | Opcional. Activa el mapa de Google y Google Routes. Sin ella todo funciona con OpenStreetMap y no se envía nada a Google. |
+| `GOOGLE_MAPS_BROWSER_KEY` | vacío | Clave aparte opcional para dibujar el mapa de Google; por defecto usa la anterior. |
+
+Cualquier otra opción de `backend/src/PaveLens.Api/appsettings.json` también se puede poner en `.env`, escribiendo `__` en lugar de `:` (por ejemplo `Ai__Meta__Reasoning__TimeoutSeconds=120`). Orden de prioridad: variables de entorno reales, luego `.env`, luego `dotnet user-secrets`, luego `appsettings.json`.
+
+Qué pasa si falta un servicio:
+
+| Si falta | Qué obtienes |
+|---|---|
+| La clave de Meta | Modo demostración: toda la aplicación funciona con resultados fijos y rotulados. |
+| El ayudante de SAM 3.1 | El script de arranque lo instala (`backend/tools/sam31`, necesita Node). A mano: `npm ci --prefix backend/tools/sam31`. |
+| Internet para las teselas | La ruta de mantenimiento se planifica igual; el área del mapa muestra un aviso. |
+| OSRM no responde | La ruta usa distancias en línea recta a 22 km/h y lo indica. |
+| Meta devuelve un plan inválido | Se usa el orden calculado por el código, con un aviso. |
+| La clave de Google | Solo OpenStreetMap; el botón de Google queda desactivado. |
+
+### Protege tus claves
+
+- Las claves van **solo** en `.env`: nunca en `appsettings.json`, en el código, en un issue ni en una captura. `git add .` nunca incluye `.env`.
+- El navegador nunca recibe la clave de Meta. Las llamadas a Meta, OSRM y Google Routes pasan por la API de PaveLens, que limita cuántas consultas puede hacer cada usuario; además las rutas se guardan en caché y Google tiene un tope diario.
+- La clave de navegador de Google solo se entrega a las páginas de la propia aplicación. Aun así se puede ver en el tráfico de red de la página, así que **restríngela en Google Cloud Console**: por sitio web (`http://localhost:4200/*` y tu dominio) y a la *Maps JavaScript API*.
+- Si una clave llega a exponerse, revócala (https://dev.meta.ai, Google Cloud Console) y crea otra.
+
+## Solución de problemas
+
+| Síntoma | Solución |
+|---|---|
+| `start.ps1 cannot be loaded because running scripts is disabled` | Ejecútalo como arriba: `powershell -ExecutionPolicy Bypass -File .\start.ps1`. |
+| `A compatible .NET SDK was not found` | Instala el SDK de .NET 10. Compruébalo con `dotnet --list-sdks`. |
+| `The Angular CLI requires a minimum Node.js version` | Instala Node 22.22+ o 24 LTS y abre una terminal nueva. |
+| Falla `npm ci` | Revisa tu conexión a internet, borra `frontend/node_modules` y vuelve a ejecutar el script. |
+| Puerto 5000 o 4200 ocupado (en macOS, casi siempre AirPlay) | Cierra el otro programa, o arranca la API con `--urls http://localhost:5055` y cambia el puerto en `frontend/proxy.conf.json`. |
+| La barra superior dice *Sin conexión* | La API no está corriendo o aún está arrancando. Revisa su ventana por si hay un error. |
+| Sigue en *Modo demostración* tras poner la clave | Reinicia la API. Comprueba que el archivo se llame exactamente `.env` (no `.env.txt`) y esté junto a `README.md`. En Windows activa *Vista → Extensiones de nombre de archivo* para verlo. |
+| La API se detiene con `Ai:Meta:...:ApiKey es obligatorio` | `PAVELENS_AI_PROVIDER=Meta` o el servicio elegido necesitan una clave que está vacía en `.env`. |
+| Los modelos reales responden 401/403 | La clave es incorrecta o la cuenta no tiene acceso a ese modelo. |
+| SAM 3.1: no se encuentra `node` o `decode.mjs` | Ejecuta `npm ci --prefix backend/tools/sam31` y comprueba que `node` esté en el PATH. |
+| Un análisis falla con *… no encontró deterioros en la foto* | SAM no vio daño. Es lo esperado con las escenas dibujadas en modo Meta. Con tu propia foto, acércate, usa luz pareja y deja el daño en la mitad inferior del encuadre. |
+| El mapa de Mantenimiento muestra teselas desordenadas o no aparece | Recarga la página. Si arrancas la web a mano, vuelve a ejecutar `npm start` después de traer cambios nuevos. |
+| Empezar de cero con los datos de demostración | Detén la API y borra `backend/src/PaveLens.Api/App_Data/`. Se recrea en el siguiente arranque. |
+
+Hay más casos en [docs/INSTALACION.es.md](docs/INSTALACION.es.md).
+
+## Estructura
+
+```
+PaviLens/
+├── backend/                         .NET 10, Clean Architecture
+│   ├── PaveLens.slnx
+│   ├── src/
+│   │   ├── PaveLens.Domain/             Inspección, deterioros, geometría validada
+│   │   ├── PaveLens.Application/        Proyección, PCI, metrado, presupuesto, tránsito, ruta de mantenimiento
+│   │   ├── PaveLens.Infrastructure/     EF Core (SQLite/PostgreSQL), cola + worker, adaptadores Meta/Roboflow, OSRM/Google
+│   │   └── PaveLens.Api/                Minimal API /api/v1, ProblemDetails, límites de consultas
+│   ├── tests/                       Pruebas unitarias y de integración (xUnit v3)
+│   ├── tools/sam31/                 Pequeño ayudante en Node que decodifica las máscaras de SAM 3.1
+│   └── samples/                     Escenas de demostración y su generador
+├── frontend/                        Angular 22 (componentes standalone, signals), ES/EN
+├── docs/                            Guías, capturas y el video de demostración
+├── .env.example                     Plantilla de configuración: cópiala como .env
+└── start.ps1 / start.sh             Comprueban requisitos, crean .env, instalan y arrancan
+```
 
 ## Pruebas
 
-Ejecuta las pruebas desde `backend/` porque `global.json` está allí:
+175 pruebas de backend (unitarias y de integración) y 19 de frontend. Las del backend se ejecutan desde `backend/`, donde está `global.json`:
 
 ```bash
 cd backend
 ```
+
 ```bash
 dotnet test --solution PaveLens.slnx
 ```
 
+Desde la raíz del repositorio, las del frontend:
+
 ```bash
 npm --prefix frontend test -- --watch=false
 ```
+
+Las pruebas nunca llaman a Meta, Google ni OSRM: usan dobles de prueba, así que corren sin internet y sin costo.
+
+## Documentación
+
+- [docs/INSTALACION.es.md](docs/INSTALACION.es.md): instalación paso a paso, todas las opciones y solución de problemas ([in English](docs/GETTING_STARTED.md)).
+- [docs/USER_GUIDE.md](docs/USER_GUIDE.md): cómo usar cada pantalla, de la foto al presupuesto y el desvío (en inglés).
+- [backend/README.md](backend/README.md): referencia de la API y configuración del backend.
+- [backend/docs/ARCHITECTURE.md](backend/docs/ARCHITECTURE.md): capas, pipeline, modelos de ingeniería y almacenamiento.
+- [backend/docs/ORCHESTRATION.md](backend/docs/ORCHESTRATION.md): orquestación de agentes, perfiles regionales y mapa de ciudades.
+- [backend/docs/ai-contracts.md](backend/docs/ai-contracts.md): contratos con SAM 3 y Muse Wonder.
+- [docs/ORQUESTACION_AGENTICA_META.es.md](docs/ORQUESTACION_AGENTICA_META.es.md): cómo trabajan los agentes de Meta, en español.
+
+## Hoja de ruta
+
+Aún no implementado:
+
+- Inspección por video con SAM 3.1 (seguimiento de máscaras entre cuadros) y agregación por unidad de muestreo.
+- Desvíos con equilibrio de Wardrop sobre calles reales de OpenStreetMap (hoy corre sobre la red de demostración del centro de Puno; el Mapa de ciudades ya muestra calles reales con desvíos de referencia).
+- Validación de la segmentación con los conjuntos Crack500 y RDD2022.
+
+## Licencia
+
+[MIT](LICENSE)
