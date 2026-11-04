@@ -59,12 +59,15 @@
   </header>
 
   @if (module() === 'maintenance') {
-    <main id="main" tabindex="-1" class="workspace planner-view"><app-maintenance-map /></main>
+    <!-- secondary modules load on first open, keeping them out of the initial bundle -->
+    <main id="main" tabindex="-1" class="workspace planner-view">@defer (on immediate) { <app-maintenance-map /> }</main>
   } @else if (module() === 'geography') {
-    <main id="main" tabindex="-1" class="workspace planner-view"><app-city-map /></main>
+    <main id="main" tabindex="-1" class="workspace planner-view">@defer (on immediate) { <app-city-map /> }</main>
   } @else if (module() === 'planner' && network(); as net) {
     <main id="main" tabindex="-1" class="workspace planner-view">
-      <app-traffic-planner [network]="net" [initialSegment]="plannerSegment()" [inspectedSegment]="selectedAnalysis()?.roadSegmentId ?? null" />
+      @defer (on immediate) {
+        <app-traffic-planner [network]="net" [initialSegment]="plannerSegment()" [inspectedSegment]="selectedAnalysis()?.roadSegmentId ?? null" />
+      }
     </main>
   } @else {
   <main id="main" tabindex="-1" class="workspace">
@@ -728,13 +731,15 @@
 
   <!-- NEW INSPECTION DIALOG -->
   @if (showUploadModal()) {
-    <app-capture-dialog
-      [segments]="network()?.segments ?? []"
-      [regions]="regions()"
-      [provider]="aiStatus()?.provider ?? null"
-      [busy]="isUploading()"
-      (submitted)="startNewAnalysis($event)"
-      (closed)="showUploadModal.set(false)" />
+    @defer (on immediate) {
+      <app-capture-dialog
+        [segments]="network()?.segments ?? []"
+        [regions]="regions()"
+        [provider]="aiStatus()?.provider ?? null"
+        [busy]="isUploading()"
+        (submitted)="startNewAnalysis($event)"
+        (closed)="showUploadModal.set(false)" />
+    }
   }
 
   <!-- DELETE CONFIRMATION: native modal dialog, so focus, Esc and the backdrop come from the browser -->
