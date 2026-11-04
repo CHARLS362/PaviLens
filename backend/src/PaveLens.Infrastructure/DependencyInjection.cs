@@ -38,6 +38,24 @@ public static class DependencyInjection
             http.Timeout = TimeSpan.FromSeconds(30);
             http.DefaultRequestHeaders.UserAgent.ParseAdd("PaveLens/1.0");
         });
+
+        // Routing: OSRM over OpenStreetMap by default (no key); Google Routes only when its map is used.
+        services.AddSingleton<PaveLens.Infrastructure.Maps.OsrmCache>();
+        services.AddHttpClient<PaveLens.Infrastructure.Maps.OsrmRouteProvider>((sp, http) =>
+        {
+            var url = sp.GetRequiredService<IOptions<PaveLens.Application.Maintenance.MapsOptions>>().Value.OsrmBaseUrl;
+            http.BaseAddress = new Uri(url.EndsWith('/') ? url : url + "/");
+            http.Timeout = TimeSpan.FromSeconds(15);
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("PaveLens/1.0 (road maintenance planner)");
+        });
+        // Google Maps (optional): server key only in configuration (.env); calls capped per day and cached.
+        services.AddSingleton<PaveLens.Infrastructure.Maps.GoogleMapsUsage>();
+        services.AddHttpClient<PaveLens.Infrastructure.Maps.GoogleRoutesProvider>(http =>
+        {
+            http.BaseAddress = new Uri("https://routes.googleapis.com/");
+            http.Timeout = TimeSpan.FromSeconds(15);
+        });
+        services.AddTransient<PaveLens.Application.Maintenance.IRoadRouteProvider, PaveLens.Infrastructure.Maps.RoadRouteRouter>();
         return services;
     }
 
@@ -101,6 +119,7 @@ public static class DependencyInjection
             services.AddSingleton<IDiagnosticReasoner, SimulatedReasoner>();
             services.AddSingleton<IMaintenanceAssistant, SimulatedMaintenanceAssistant>();
             services.AddSingleton<ITrafficPlanner, SimulatedTrafficPlanner>();
+            services.AddSingleton<PaveLens.Application.Maintenance.ICrewDayPlanner, SimulatedCrewPlanner>();
             services.AddSingleton<IInspectionCoordinator, SimulatedInspectionCoordinator>();
             services.AddSingleton<IInspectionAuditor, SimulatedInspectionAuditor>();
             return;
@@ -126,6 +145,7 @@ public static class DependencyInjection
         services.AddTransient<IDiagnosticReasoner, MetaReasoner>();
         services.AddTransient<IMaintenanceAssistant, MetaMaintenanceAssistant>();
         services.AddTransient<ITrafficPlanner, MetaTrafficPlanner>();
+        services.AddTransient<PaveLens.Application.Maintenance.ICrewDayPlanner, MetaCrewPlanner>();
         services.AddTransient<IInspectionCoordinator, MetaInspectionCoordinator>();
         services.AddTransient<IInspectionAuditor, MetaInspectionAuditor>();
     }

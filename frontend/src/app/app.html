@@ -17,6 +17,7 @@
       <button [class.active]="module() === 'inspections'" [attr.aria-current]="module() === 'inspections' ? 'page' : null" (click)="module.set('inspections')">{{ 'Inspecciones' | t }}</button>
       <button [class.active]="module() === 'planner'" [attr.aria-current]="module() === 'planner' ? 'page' : null" [disabled]="!network()" (click)="openPlanner()">{{ 'Planificación de desvíos' | t }}</button>
       <button [class.active]="module() === 'geography'" [attr.aria-current]="module() === 'geography' ? 'page' : null" (click)="module.set('geography')">{{ 'Mapa de ciudades' | t }}</button>
+      <button [class.active]="module() === 'maintenance'" [attr.aria-current]="module() === 'maintenance' ? 'page' : null" (click)="module.set('maintenance')">{{ 'Mantenimiento' | t }}</button>
     </nav>
 
     <div class="topbar-actions">
@@ -51,7 +52,9 @@
     </div>
   </header>
 
-  @if (module() === 'geography') {
+  @if (module() === 'maintenance') {
+    <main id="main" tabindex="-1" class="workspace planner-view"><app-maintenance-map /></main>
+  } @else if (module() === 'geography') {
     <main id="main" tabindex="-1" class="workspace planner-view"><app-city-map /></main>
   } @else if (module() === 'planner' && network(); as net) {
     <main id="main" tabindex="-1" class="workspace planner-view">
@@ -141,6 +144,16 @@
             <button class="btn btn-text danger" (click)="askDelete()" [disabled]="isRunning(current.status)" [attr.aria-label]="'Eliminar inspección' | t">{{ 'Eliminar' | t }}</button>
           </div>
         </div>
+
+        @if (nextAction(); as act) {
+          <div class="next-action" [class.review]="act.kind === 'review'" role="status">
+            <span class="next-action-label">{{ 'Siguiente paso' | t }}</span>
+            <span class="next-action-text">{{ act.text | t: { n: act.n } }}</span>
+            <button class="btn btn-secondary btn-sm" (click)="doNextAction()">
+              {{ (act.kind === 'depth' ? 'Ingresar profundidad' : act.kind === 'review' ? 'Ver observaciones' : 'Ver PCI') | t }}
+            </button>
+          </div>
+        }
 
         <div class="kpis">
           <div class="kpi kpi-pci" [ngClass]="pciClass(current.pci?.pci)">
@@ -431,7 +444,7 @@
                 </div>
                 <div class="pci-scale-labels"><span>0</span><span>40</span><span>55</span><span>70</span><span>85</span><span>100</span></div>
                 @if (pci.isPartial) {
-                  <p class="callout">
+                  <p class="callout" id="pci-partial">
                     {{ 'El área fotografiada ({a} m²) es menor que una unidad de muestreo. Las densidades se calculan sobre {u} m², así que el PCI es una cota superior.' | t: { a: (pci.surveyedAreaM2 | number:'1.0-1'), u: pci.sampleUnitAreaM2 } }}
                   </p>
                 }

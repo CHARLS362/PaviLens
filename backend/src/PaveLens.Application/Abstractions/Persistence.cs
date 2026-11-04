@@ -41,6 +41,8 @@ public interface IInspectionQueries
 {
     Task<PagedResult<InspectionSummaryDto>> ListAsync(int page, int pageSize, CancellationToken cancellationToken);
     Task<InspectionDetailDto?> GetAsync(Guid id, CancellationToken cancellationToken);
+    /// <summary>Most recent inspections with what is needed to place them on a map.</summary>
+    Task<IReadOnlyList<PaveLens.Application.Maintenance.InspectionLocationRow>> ListLocationsAsync(int max, CancellationToken cancellationToken);
     Task<IReadOnlyList<ConversationMessageDto>> GetConversationAsync(
         Guid inspectionId, Guid? distressId, CancellationToken cancellationToken);
 }

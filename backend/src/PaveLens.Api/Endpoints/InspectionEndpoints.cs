@@ -11,6 +11,7 @@ namespace PaveLens.Api.Endpoints;
 internal static class RateLimitPolicies
 {
     public const string Ai = "ai";
+    public const string Maps = "maps";
 }
 
 internal static class InspectionEndpoints

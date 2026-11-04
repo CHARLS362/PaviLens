@@ -1,0 +1,123 @@
+<div class="mm-layout">
+  <section class="mm-view" aria-labelledby="mm-title">
+    <header>
+      <h1 id="mm-title">{{ 'Ruta de mantenimiento' | t }}</h1>
+      <p>{{ 'Cada punto es una inspección, coloreada por su PCI. Elige las obras del día y PaveLens ordena la visita de la cuadrilla.' | t }}</p>
+    </header>
+    <div class="mm-provider" role="radiogroup" [attr.aria-label]="'Proveedor del mapa' | t">
+      <button type="button" role="radio" [attr.aria-checked]="provider() === 'osm'" [class.on]="provider() === 'osm'"
+              (click)="useProvider('osm')" [disabled]="mapState() === 'loading'">OpenStreetMap</button>
+      <button type="button" role="radio" [attr.aria-checked]="provider() === 'google'" [class.on]="provider() === 'google'"
+              (click)="useProvider('google')" [disabled]="mapState() === 'loading' || !config()?.googleAvailable"
+              [attr.title]="config()?.googleAvailable ? null : ('Google Maps no está configurado en el servidor' | t)">Google Maps</button>
+      <small>{{ (provider() === 'osm' ? 'Sin clave ni cuenta: datos abiertos de OpenStreetMap.' : 'Usa la clave de Google configurada en el servidor.') | t }}</small>
+    </div>
+    <div class="mm-canvas">
+      <div #canvas class="mm-map" role="application" [attr.aria-label]="'Mapa de inspecciones' | t"></div>
+      @if (mapState() === 'loading') { <p class="mm-overlay" role="status">{{ 'Cargando el mapa…' | t }}</p> }
+      @if (mapState() === 'unavailable') {
+        <div class="mm-overlay">
+          <strong>{{ 'Mapa no disponible' | t }}</strong>
+          <p>{{ 'No se pudieron cargar las teselas del mapa. La planificación de la ruta funciona igual.' | t }}</p>
+        </div>
+      }
+    </div>
+    <div class="mm-legend" aria-hidden="true">
+      <span><i style="background:#c62828"></i>&lt; 40</span><span><i style="background:#ef6c00"></i>40–55</span>
+      <span><i style="background:#f2b705"></i>55–70</span><span><i style="background:#7cb342"></i>70–85</span>
+      <span><i style="background:#2e7d32"></i>≥ 85</span><span><i style="background:#8a929c"></i>{{ 'Sin PCI' | t }}</span>
+      <span><i class="hatch"></i>{{ 'Obra: un carril' | t }}</span><span><i class="hatch full"></i>{{ 'Obra: cierre total' | t }}</span>
+    </div>
+  </section>
+
+  <aside class="mm-panel">
+    <h2>{{ 'Obras de la jornada' | t }} <span class="mm-count">{{ selectedCount() }}/{{ points().length }}</span></h2>
+    <div class="mm-actions">
+      <button class="btn btn-secondary btn-sm" (click)="selectAll(true)">{{ 'Todas' | t }}</button>
+      <button class="btn btn-secondary btn-sm" (click)="selectAll(false)">{{ 'Ninguna' | t }}</button>
+    </div>
+    <ul class="mm-list">
+      @for (p of points(); track p.id) {
+        <li>
+          <label class="check">
+            <input type="checkbox" [checked]="selectedIds().has(p.id)" (change)="toggle(p.id)" />
+            <span class="mm-dot" [style.background]="pciColor(p.pci)" aria-hidden="true"></span>
+            <span class="mm-name">{{ p.title }}</span>
+            <span class="mm-pci">PCI {{ p.pci != null ? (p.pci | number:'1.0-0') : '—' }}</span>
+          </label>
+          <button class="btn btn-text btn-sm" (click)="focus(p)" [disabled]="mapState() !== 'ready'" [attr.aria-label]="'Ver en el mapa' | t">⌖</button>
+        </li>
+      } @empty {
+        <li class="muted">{{ 'No hay inspecciones con ubicación. Indica la calle o las coordenadas al crear una inspección.' | t }}</li>
+      }
+    </ul>
+    <label class="check"><input type="checkbox" [checked]="priorityFirst()" (change)="priorityFirst.set(!priorityFirst())" />{{ 'Primero lo urgente (PCI bajo)' | t }}</label>
+    <button class="btn btn-primary" (click)="plan()" [disabled]="busy() || !selectedCount()">
+      {{ (busy() ? 'Muse Wonder está planificando la jornada…' : 'Planificar la jornada con Meta') | t }}
+    </button>
+    @if (error(); as e) { <p class="mm-error" role="alert">{{ e | t }}</p> }
+
+    @if (route(); as r) {
+      <section class="mm-result" aria-live="polite">
+        <div class="mm-totals">
+          <div><span>{{ 'Recorrido' | t }}</span><strong>{{ r.totalDistanceM / 1000 | number:'1.1-1' }} km</strong></div>
+          <div><span>{{ 'Manejo' | t }}</span><strong>{{ r.totalDurationMin | number:'1.0-0' }} min</strong></div>
+          <div><span>{{ 'Obras' | t }}</span><strong>{{ r.stops.length }}</strong></div>
+        </div>
+
+        @if (r.planner; as pl) {
+          <div class="mm-ai">
+            <div class="mm-ai-head">
+              <strong>{{ 'Plan de la jornada' | t }}</strong>
+              <span class="mm-engine" [class.meta]="pl.orderBy === 'meta'">{{ pl.orderBy === 'meta' ? 'Meta · ' + pl.model : ('Simulación' | t) }}</span>
+            </div>
+            <p>{{ pl.summary }}</p>
+            <p class="mm-check">
+              @if (pl.orderChanged) {
+                {{ 'Meta cambió el orden propuesto por el código: {a} km frente a {b} km del recorrido más corto.' | t: { a: (r.totalDistanceM / 1000 | number:'1.1-1'), b: (pl.codeOrderDistanceM / 1000 | number:'1.1-1') } }}
+              } @else {
+                {{ 'Meta confirmó el orden más corto calculado por el código.' | t }}
+              }
+            </p>
+          </div>
+        }
+
+        <span class="mm-source" [class.google]="r.source !== 'estimate'">{{ sourceLabel(r.source) | t }}</span>
+        <ol class="mm-stops">
+          @for (s of r.stops; track s.inspectionId) {
+            <li (click)="focus(s)">
+              <span class="mm-num" [style.background]="pciColor(s.pci)">{{ s.order }}</span>
+              <span class="mm-stop">
+                <strong>{{ s.title }}</strong>
+                <small>{{ s.priority | t }} · {{ s.legDistanceM / 1000 | number:'1.1-1' }} km · {{ s.legDurationMin | number:'1.0-0' }} min</small>
+                @if (sitePlans().get(s.inspectionId); as sp) {
+                  <span class="mm-closure" [class.full]="isFullClosure(sp.closure)"><b>{{ sp.window }}</b> · {{ sp.closure }}</span>
+                  @if (sp.rationale) { <small class="mm-why">{{ sp.rationale }}</small> }
+                }
+              </span>
+            </li>
+          }
+        </ol>
+
+        @if (r.planner; as pl) {
+          @if (pl.risks.length) {
+            <h3>{{ 'Riesgos' | t }}</h3>
+            <ul class="mm-notes">@for (x of pl.risks; track $index) { <li>{{ x }}</li> }</ul>
+          }
+          @if (pl.communication.length) {
+            <h3>{{ 'Comunicación' | t }}</h3>
+            <ul class="mm-notes">@for (x of pl.communication; track $index) { <li>{{ x }}</li> }</ul>
+          }
+        }
+        @if (r.warnings.length) { <ul class="mm-notes">@for (w of r.warnings; track w) { <li>{{ w | t }}</li> }</ul> }
+      </section>
+    }
+    <p class="mm-foot">
+      @if (provider() === 'osm') {
+        {{ 'Mapa © colaboradores de OpenStreetMap (ODbL). Las rutas por calles se calculan con OSRM desde el servidor de PaveLens, con caché y una consulta por segundo como máximo.' | t }}
+      } @else {
+        {{ 'Las consultas a Google pasan por el servidor de PaveLens, con límite diario y caché; la clave no está en el código de la aplicación.' | t }}
+      }
+    </p>
+  </aside>
+</div>

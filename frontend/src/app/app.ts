@@ -8,6 +8,7 @@ import { TrafficPlanner } from './traffic/traffic-planner';
 import { CaptureDialog } from './capture/capture-dialog';
 import { AgentRunPanel } from './agents/agent-run-panel';
 import { CityMap } from './geography/city-map';
+import { MaintenanceMap } from './maintenance/maintenance-map';
 import { RegionalConfiguration } from './models/analysis.model';
 import { homography } from './capture/homography';
 import { I18n, TranslatePipe } from './i18n/i18n';
@@ -32,7 +33,7 @@ import {
 
 type Toast = { kind: 'error' | 'info'; text: string };
 type Tab = 'distress' | 'budget' | 'traffic' | 'steps';
-type View = 'inspections' | 'planner' | 'geography';
+type View = 'inspections' | 'planner' | 'geography' | 'maintenance';
 
 const PIPELINE_STAGES = [
   'Imagen recibida · en cola',
@@ -50,7 +51,7 @@ const POLL_MS = 800;
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, TrafficPlanner, CaptureDialog, TranslatePipe, A11yPanel, AgentRunPanel, CityMap],
+  imports: [CommonModule, FormsModule, TrafficPlanner, CaptureDialog, TranslatePipe, A11yPanel, AgentRunPanel, CityMap, MaintenanceMap],
   templateUrl: './app.html',
 })
 export class App implements OnInit, OnDestroy {
@@ -144,6 +145,48 @@ export class App implements OnInit, OnDestroy {
       massT: list.reduce((sum, d) => sum + (d.quantities?.massT ?? 0), 0)
     };
   });
+
+  /**
+   * The one thing the inspector should do next, shown above the KPIs so it reads in seconds.
+   * Failures already have their own alert with a retry button, so they are not repeated here.
+   */
+  nextAction = computed<{ kind: 'review' | 'depth' | 'partial'; text: string; n?: number; target?: Distress } | null>(() => {
+    const a = this.selectedAnalysis();
+    if (!a || a.status !== 'Completed') return null;
+    // NeedsReview without reviewer issues is caused by the method's assumptions, handled below.
+    const issues = a.trace?.orchestration?.status === 'NeedsReview' ? a.trace.orchestration.reviewIssues?.length ?? 0 : 0;
+    if (issues) {
+      return { kind: 'review', n: issues, text: issues === 1
+        ? 'Revisa la observación del revisor antes de usar el informe.'
+        : 'Revisa las {n} observaciones del revisor antes de usar el informe.' };
+    }
+    const assumed = a.distresses.filter(d => d.quantities && d.quantities.depthSource !== 'Measured');
+    if (assumed.length) {
+      return {
+        kind: 'depth', n: assumed.length, target: assumed[0],
+        text: assumed.length === 1
+          ? 'Falta la profundidad medida de 1 deterioro: el metrado y el presupuesto son estimados.'
+          : 'Falta la profundidad medida de {n} deterioros: el metrado y el presupuesto son estimados.',
+      };
+    }
+    if (a.pci?.isPartial) {
+      return { kind: 'partial', text: 'PCI parcial: la foto cubre menos que una unidad de muestreo. Úsalo como cota superior.' };
+    }
+    return null;
+  });
+
+  doNextAction() {
+    const act = this.nextAction();
+    if (!act) return;
+    if (act.target) this.showOnPhoto(act.target);
+    else this.setTab('distress');
+    setTimeout(() => {
+      const id = act.kind === 'depth' ? 'depth-input' : act.kind === 'review' ? 'agent-review' : 'pci-partial';
+      const el = document.getElementById(id) ?? (act.kind === 'review' ? document.querySelector('.assumptions') : null);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (el instanceof HTMLInputElement) el.focus();
+    });
+  }
 
   /** Patchable surface (potholes, alligator cracking, rutting) in m². */
   affectedAreaM2 = computed(() =>

@@ -21,6 +21,11 @@ public static class DotEnvFile
         ["META_REASONING_MODEL"] = "Ai:Meta:Reasoning:Model",
         ["META_SAM31_API_KEY"] = "Ai:Meta:Sam31:ApiKey",
         ["ROBOFLOW_API_KEY"] = "Ai:Meta:Segmentation:ApiKey",
+        ["MAPS_PROVIDER"] = "Maps:Provider",
+        ["OSRM_URL"] = "Maps:OsrmBaseUrl",
+        ["MAP_TILE_URL"] = "Maps:TileUrl",
+        ["GOOGLE_MAPS_API_KEY"] = "GoogleMaps:ApiKey",
+        ["GOOGLE_MAPS_BROWSER_KEY"] = "GoogleMaps:BrowserKey",
     };
 
     /// <summary>

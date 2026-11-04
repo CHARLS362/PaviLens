@@ -23,11 +23,22 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "leaflet.css",
+                "input": "node_modules/leaflet/dist",
+                "output": "vendor/leaflet"
+              },
+              {
+                "glob": "images/*",
+                "input": "node_modules/leaflet/dist",
+                "output": "vendor/leaflet"
               }
             ],
             "styles": [
               "src/styles.css"
-            ]
+            ],
+            "allowedCommonJsDependencies": ["leaflet"]
           },
           "configurations": {
             "production": {

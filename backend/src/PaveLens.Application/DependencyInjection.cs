@@ -36,6 +36,9 @@ public static class DependencyInjection
         services.AddScoped<AssistantService>();
         services.AddSingleton<TrafficService>();
         services.AddScoped<TrafficPlanService>();
+        services.AddOptions<PaveLens.Application.Maintenance.GoogleMapsOptions>().Bind(configuration.GetSection(PaveLens.Application.Maintenance.GoogleMapsOptions.SectionName));
+        services.AddOptions<PaveLens.Application.Maintenance.MapsOptions>().Bind(configuration.GetSection(PaveLens.Application.Maintenance.MapsOptions.SectionName));
+        services.AddScoped<PaveLens.Application.Maintenance.MaintenanceService>();
 
         return services;
     }

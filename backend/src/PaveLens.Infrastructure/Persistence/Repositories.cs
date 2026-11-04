@@ -96,6 +96,24 @@ internal sealed class InspectionQueries(AppDbContext db) : IInspectionQueries
         return new PagedResult<InspectionSummaryDto>(items, page, pageSize, total);
     }
 
+    public async Task<IReadOnlyList<PaveLens.Application.Maintenance.InspectionLocationRow>> ListLocationsAsync(int max, CancellationToken cancellationToken)
+    {
+        var rows = await db.Inspections
+            .AsNoTracking()
+            .OrderByDescending(i => i.CreatedAt)
+            .Take(Math.Clamp(max, 1, 500))
+            .Select(i => new
+            {
+                i.Id, i.Title, i.Location, i.Status, i.Pci, i.RoadSegmentId, i.Trace,
+                DistressCount = i.Distresses.Count,
+                PotholeCount = i.Distresses.Count(d => d.Type == DistressType.Pothole)
+            })
+            .ToListAsync(cancellationToken);
+        return rows.Select(r => new PaveLens.Application.Maintenance.InspectionLocationRow(
+            r.Id, r.Title, r.Location, r.Status, r.Pci, r.DistressCount, r.PotholeCount, r.RoadSegmentId,
+            r.Trace?.Orchestration?.Latitude, r.Trace?.Orchestration?.Longitude)).ToList();
+    }
+
     public async Task<InspectionDetailDto?> GetAsync(Guid id, CancellationToken cancellationToken)
     {
         var inspection = await db.Inspections

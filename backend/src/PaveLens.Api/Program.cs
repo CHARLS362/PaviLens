@@ -49,6 +49,15 @@ builder.Services.AddRateLimiter(o =>
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0
         }));
+    // Google Maps calls: tighter per-client window on top of the daily cap in GoogleMapsUsage.
+    o.AddPolicy(RateLimitPolicies.Maps, http => RateLimitPartition.GetFixedWindowLimiter(
+        http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = configuration.GetValue("RateLimiting:MapsRequestsPerMinute", 30),
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
 });
 
 var app = builder.Build();
@@ -77,6 +86,7 @@ api.MapImageEndpoints();
 api.MapTrafficEndpoints();
 api.MapAiStatusEndpoints();
 api.MapOrchestrationEndpoints();
+api.MapMapsEndpoints(configuration);
 
 await DatabaseInitializer.InitializeAsync(app.Services, app.Environment.ContentRootPath);
 await app.RunAsync();

@@ -53,7 +53,7 @@
 
   @if (!compact()) {
     @if (reviewIssues().length) {
-      <div class="review">
+      <div class="review" id="agent-review">
         <h4>{{ 'Observaciones del revisor' | t }} ({{ reviewIssues().length }})</h4>
         <ul>@for (issue of reviewIssues(); track $index) { <li>{{ issue }}</li> }</ul>
       </div>
@@ -62,7 +62,7 @@
     }
 
     @if (run().warnings.length) {
-      <details class="assumptions">
+      <details class="assumptions" [open]="run().status === 'NeedsReview'">
         <summary>{{ 'Supuestos del método' | t }} ({{ run().warnings.length }})</summary>
         <ul>@for (warning of run().warnings; track $index) { <li>{{ warning | t }}</li> }</ul>
       </details>
