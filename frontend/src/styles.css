@@ -168,6 +168,28 @@ button {
 
 .api-status.online .dot { background: var(--pci-a); }
 
+.repo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  transition: all 0.15s ease;
+}
+.repo-badge:hover {
+  color: var(--text);
+  background: var(--surface-2);
+  border-color: var(--border-focus);
+}
+.repo-badge svg {
+  display: block;
+}
+
 .lang-toggle {
   display: inline-flex;
   border: 1px solid var(--border-strong);
@@ -1708,8 +1730,8 @@ main:focus { outline: none; }
 :root[data-text="xlarge"] { font-size: 130%; --topbar-h: 60px; }
 
 /* Short labels never break mid-phrase; with larger text the top bar drops the subtitle to make room. */
-.topnav button, .model-status, .api-status, .zoom-level, .lang-toggle button { white-space: nowrap; }
-.lang-toggle { flex-shrink: 0; }
+.topnav button, .model-status, .api-status, .zoom-level, .lang-toggle button, .repo-badge { white-space: nowrap; }
+.lang-toggle, .repo-badge { flex-shrink: 0; }
 :root[data-text="large"] .topbar :is(.wordmark-sep, .wordmark-context),
 :root[data-text="xlarge"] .topbar :is(.wordmark-sep, .wordmark-context) { display: none; }
 :root[data-text="large"] .topbar-actions,

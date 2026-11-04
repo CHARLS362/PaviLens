@@ -291,6 +291,12 @@ Aún no implementado:
 - Desvíos con equilibrio de Wardrop sobre calles reales de OpenStreetMap (hoy corre sobre la red de demostración del centro de Puno; el Mapa de ciudades ya muestra calles reales con desvíos de referencia).
 - Validación de la segmentación con los conjuntos Crack500 y RDD2022.
 
+## Autor
+
+**Carlos Turpo (CHARLS362)**
+- Repositorio oficial: [github.com/CHARLS362/PaviLens](https://github.com/CHARLS362/PaviLens)
+- Desarrollado para el **Meta Global AI Developer Hackathon 2026** (Indie Developer Track).
+
 ## Licencia
 
-[MIT](LICENSE)
+[MIT](LICENSE) · Copyright (c) 2026 Carlos Turpo (CHARLS362)

@@ -11,5 +11,10 @@
     <!-- Public API docs are not shipped; keep XML-doc warnings out of the build. -->
     <!-- CA1711: "Queue" is the accurate name for the inspection work queue. -->
     <NoWarn>$(NoWarn);CS1591;CA1711</NoWarn>
+    <Authors>Carlos Turpo (CHARLS362)</Authors>
+    <Company>Carlos Turpo</Company>
+    <Copyright>Copyright © 2026 Carlos Turpo (CHARLS362). All rights reserved.</Copyright>
+    <RepositoryUrl>https://github.com/CHARLS362/PaviLens</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/CHARLS362/PaviLens</PackageProjectUrl>
   </PropertyGroup>
 </Project>

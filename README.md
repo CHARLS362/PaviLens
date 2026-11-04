@@ -285,6 +285,12 @@ Not implemented yet:
 - Wardrop detour planning on real OpenStreetMap streets (today it runs on the demo network of central Puno; City maps already shows real streets with reference detours).
 - Validation of the segmentation against the Crack500 and RDD2022 datasets.
 
+## Author
+
+**Carlos Turpo (CHARLS362)**
+- Repository: [github.com/CHARLS362/PaviLens](https://github.com/CHARLS362/PaviLens)
+- Developed for the **Meta Global AI Developer Hackathon 2026** (Indie Developer Track).
+
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) · Copyright (c) 2026 Carlos Turpo (CHARLS362)

@@ -1,6 +1,12 @@
 {
   "name": "frontend",
   "version": "0.0.0",
+  "author": "Carlos Turpo <carlos_arnol@hotmail.com> (https://github.com/CHARLS362)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CHARLS362/PaviLens.git"
+  },
+  "homepage": "https://github.com/CHARLS362/PaviLens",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
