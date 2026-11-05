@@ -208,6 +208,30 @@ export class App implements OnInit, OnDestroy {
     return (x: number, y: number): [number, number] => [x * w, y * h];
   });
 
+  /**
+   * Distresses of an oblique photo that lie mostly outside the calibrated rectangle. The homography is exact on the
+   * rectangle's plane but small corner errors grow with distance from it, so their measurements are less precise.
+   */
+  outsideCalibration = computed(() => {
+    const a = this.selectedAnalysis();
+    const ids = new Set<string>();
+    if (!a?.calibration) return ids;
+    const { corners, widthM, lengthM } = a.calibration;
+    const map = homography(corners, [[0, 0], [widthM, 0], [widthM, lengthM], [0, lengthM]]);
+    const tolW = 0.1 * widthM + 0.25;
+    const tolL = 0.1 * lengthM + 0.25;
+    for (const d of a.distresses) {
+      const pts = d.mask?.length >= 3 ? d.mask : [[d.box.x + d.box.width / 2, d.box.y + d.box.height / 2] as [number, number]];
+      let outside = 0;
+      for (const [u, v] of pts) {
+        const p = map(u, v);
+        if (!p || p[0] < -tolW || p[0] > widthM + tolW || p[1] < -tolL || p[1] > lengthM + tolL) outside++;
+      }
+      if (outside / pts.length > 0.5) ids.add(d.id);
+    }
+    return ids;
+  });
+
   /** Cursor position on the road surface, in metres. Null above the horizon of an oblique photo. */
   cursorGround = computed(() => {
     const c = this.cursor();

@@ -436,6 +436,13 @@
                   : '{n} máscaras quedaron más allá del horizonte de la calibración: no se midieron ni cuentan en el PCI.') | t: { n: skipped } }}
               </p>
             }
+            @if (outsideCalibration().size; as outside) {
+              <p class="callout">
+                {{ (outside === 1
+                  ? '1 deterioro queda fuera del rectángulo calibrado: su medida es menos precisa. Para medirlo bien, toma otra foto con el rectángulo alrededor del daño.'
+                  : '{n} deterioros quedan fuera del rectángulo calibrado: sus medidas son menos precisas. Para medirlos bien, toma otra foto con el rectángulo alrededor de los daños.') | t: { n: outside } }}
+              </p>
+            }
 
             @if (current.pci; as pci) {
               <section class="section">
@@ -489,6 +496,9 @@
                   </div>
                 </header>
 
+                @if (outsideCalibration().has(d.id)) {
+                  <p class="callout">{{ 'Fuera del rectángulo calibrado: medida menos precisa.' | t }}</p>
+                }
                 <dl class="facts">
                   <dt>{{ 'Área' | t }}</dt><dd>{{ d.measurement.areaM2 | number:'1.3-3' }} m²</dd>
                   <dt>{{ 'Largo × ancho' | t }}</dt><dd>{{ d.measurement.lengthM | number:'1.2-2' }} × {{ d.measurement.widthM | number:'1.2-2' }} m</dd>

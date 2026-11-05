@@ -52,6 +52,8 @@ interface Sample {
   notes: string;
   widthM?: number;
   calibration?: { corners: Point[]; widthM: number; lengthM: number };
+  /** Author and licence, shown under real photos (CC BY / CC BY-SA require attribution). */
+  credit?: string;
 }
 
 const SAMPLES: Sample[] = [
@@ -88,6 +90,100 @@ const SAMPLES: Sample[] = [
 ];
 
 /**
+ * Heuristic for a photo taken at an angle: a band of sky (blue, or bright and grey when overcast) across the top
+ * of the frame. A top-down photo of a road shows only pavement. It only drives a warning, never a decision.
+ */
+function hasSkyBand(img: HTMLImageElement): boolean {
+  try {
+    const w = 64;
+    const h = Math.max(1, Math.round((w * img.naturalHeight) / img.naturalWidth));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return false;
+    ctx.drawImage(img, 0, 0, w, h);
+    const band = Math.max(1, Math.round(h * 0.2));
+    const { data } = ctx.getImageData(0, 0, w, band);
+    let sky = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
+      const max = Math.max(r, g, b);
+      const blue = b > 110 && b > r + 15 && b >= g;
+      const overcast = max > 200 && max - Math.min(r, g, b) < 30;
+      if (blue || overcast) sky++;
+    }
+    return sky / (data.length / 4) > 0.35;
+  } catch {
+    return false;
+  }
+}
+
+const APPROX_NOTE = 'Foto real de Wikimedia Commons. La calibración es aproximada (estimada a ojo con las líneas de la vía): ajústala si necesitas medidas exactas.';
+
+/**
+ * Real photos from Wikimedia Commons (attribution in public/samples/real/README.md) to try the Meta models on
+ * actual Juliaca and Puno roads. There is no ground truth: the calibration is estimated from the road markings.
+ */
+const REAL_SAMPLES: Sample[] = [
+  {
+    file: 'real/juliaca-autopista.jpg',
+    label: 'Juliaca · autopista a Puno',
+    hint: 'Foto real · en ángulo',
+    title: 'Autopista Juliaca–Puno · carril de salida',
+    location: 'Autopista Juliaca–Puno · Juliaca',
+    segmentId: '',
+    notes: APPROX_NOTE,
+    calibration: { corners: [[0.07, 0.59], [0.8, 0.59], [0.7, 0.41], [0.34, 0.41]], widthM: 7.2, lengthM: 30 },
+    credit: 'wizeuce · dominio público'
+  },
+  {
+    file: 'real/juliaca-via-huancane.jpg',
+    label: 'Juliaca · vía a Huancané',
+    hint: 'Foto real · en ángulo',
+    title: 'Vía Huancané–Juliaca · tramo recto',
+    location: 'Vía Huancané–Juliaca · Juliaca',
+    segmentId: '',
+    notes: APPROX_NOTE,
+    calibration: { corners: [[0.0, 0.52], [0.91, 0.52], [0.67, 0.35], [0.3, 0.35]], widthM: 7.2, lengthM: 10.5 },
+    credit: 'JhonRonaldMCH · CC BY-SA 4.0'
+  },
+  {
+    file: 'real/puno-av-el-puerto.jpg',
+    label: 'Puno · Av. El Puerto',
+    hint: 'Foto real · en ángulo',
+    title: 'Av. El Puerto · calzada con charcos',
+    location: 'Av. El Puerto · Puno',
+    segmentId: '',
+    notes: APPROX_NOTE,
+    calibration: { corners: [[0.06, 0.88], [0.44, 0.88], [0.53, 0.76], [0.3, 0.76]], widthM: 7, lengthM: 15 },
+    credit: 'magicmonkey · CC BY 2.0'
+  },
+  {
+    file: 'real/puno-calle-conde-de-lemos.jpg',
+    label: 'Puno · Calle Conde de Lemos',
+    hint: 'Foto real · calle angosta',
+    title: 'Calle Conde de Lemos · centro de Puno',
+    location: 'Calle Conde de Lemos · Puno',
+    segmentId: '',
+    notes: APPROX_NOTE,
+    calibration: { corners: [[0.14, 0.95], [0.36, 0.95], [0.25, 0.68], [0.16, 0.68]], widthM: 3, lengthM: 12 },
+    credit: 'Jordan Israel · CC BY-SA 4.0'
+  },
+  {
+    file: 'real/lima-pista-con-baches.jpg',
+    label: 'Lima · pista con baches',
+    hint: 'Foto real · daño visible (referencia)',
+    title: 'Pista con baches · referencia de daño real',
+    location: 'San Luis · Lima',
+    segmentId: '',
+    notes: 'Foto real de Wikimedia Commons, tomada en Lima: no hay fotos libres con daños visibles en Juliaca o Puno. La calibración es aproximada.',
+    calibration: { corners: [[0.02, 0.97], [0.78, 0.97], [0.72, 0.32], [0.12, 0.32]], widthM: 4, lengthM: 6 },
+    credit: 'Jeferson Llaccolla · CC BY-SA 4.0'
+  }
+];
+
+/**
  *New-inspection dialog: photo from file or camera, ground scale (nadir width or a 4-point calibration drawn on
  * the photo) and inspection details. Before uploading it estimates what the photo can measure: ground
  * resolution, the thinnest detectable crack and the surveyed area against the ASTM sample unit.
@@ -116,6 +212,7 @@ export class CaptureDialog implements OnDestroy {
   readonly rectPresets = RECT_PRESETS;
   readonly cornerNames = CORNER_NAMES;
   readonly samples = SAMPLES;
+  readonly realSamples = REAL_SAMPLES;
   loadingSample = signal(false);
   private i18n = inject(I18n);
 
@@ -138,6 +235,8 @@ export class CaptureDialog implements OnDestroy {
   fileError = signal<string | null>(null);
   previewUrl = signal<string | null>(null);
   imageSize = signal<{ w: number; h: number } | null>(null);
+  /** The top of the photo looks like sky: it was almost certainly taken at an angle, not top-down. */
+  looksOblique = signal(false);
 
   // Camera
   stream = signal<MediaStream | null>(null);
@@ -328,6 +427,7 @@ export class CaptureDialog implements OnDestroy {
       const img = new Image();
       img.onload = () => {
         this.imageSize.set({ w: img.naturalWidth, h: img.naturalHeight });
+        this.looksOblique.set(hasSkyBand(img));
         resolve(true);
       };
       img.onerror = () => {

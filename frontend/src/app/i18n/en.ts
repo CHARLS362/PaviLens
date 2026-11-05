@@ -666,6 +666,40 @@ export const EN: Record<string, string> = {
   'Foto cenital a 1.6 m de altura; el encuadre cubre 3 m de ancho.': 'Top-down photo from 1.6 m high; the frame covers 3 m across.',
   'Jr. Arequipa, cuadra 5 · Puno': 'Jr. Arequipa, block 5 · Puno',
   'Foto cenital; el encuadre cubre 4 m de ancho.': 'Top-down photo; the frame covers 4 m across.',
+  'Fotos reales de Juliaca y Puno': 'Real photos from Juliaca and Puno',
+  'Esta foto parece tomada en ángulo:': 'This photo looks like it was taken at an angle:',
+  'se ve cielo en la parte superior. Con «Desde arriba» los daños lejanos saldrían más chicos de lo que son.':
+    'there is sky at the top. With "From above", distant damage would come out smaller than it is.',
+  '«Desde arriba» solo vale si la cámara miraba al suelo en paralelo. Si en la foto se ve el horizonte, la calle al fondo o autos, es una foto en ángulo.':
+    '"From above" only applies if the camera faced the ground squarely. If the photo shows the horizon, the street ahead or cars, it is an angled photo.',
+  'Cambiar a «En ángulo»': 'Switch to "At an angle"',
+  'Elige un tramo solo si la foto es de esa calle. Si no está en la red, déjalo en «Sin asignar» y escribe la calle real en «Ubicación».':
+    'Pick a segment only if the photo is of that street. If it is not in the network, leave it "Unassigned" and write the real street under "Location".',
+  '1 deterioro queda fuera del rectángulo calibrado: su medida es menos precisa. Para medirlo bien, toma otra foto con el rectángulo alrededor del daño.':
+    '1 distress lies outside the calibrated rectangle: its measurement is less precise. To measure it properly, take another photo with the rectangle around the damage.',
+  '{n} deterioros quedan fuera del rectángulo calibrado: sus medidas son menos precisas. Para medirlos bien, toma otra foto con el rectángulo alrededor de los daños.':
+    '{n} distresses lie outside the calibrated rectangle: their measurements are less precise. To measure them properly, take another photo with the rectangle around the damage.',
+  'Fuera del rectángulo calibrado: medida menos precisa.': 'Outside the calibrated rectangle: less precise measurement.',
+  'Pistas reales para probar los modelos Meta. La escala viene estimada; revísala en el siguiente paso.':
+    'Real roads to try the Meta models on. The scale is estimated; check it in the next step.',
+  'Foto real de Wikimedia Commons. La calibración es aproximada (estimada a ojo con las líneas de la vía): ajústala si necesitas medidas exactas.':
+    'Real photo from Wikimedia Commons. The calibration is approximate (eyeballed from the road markings): adjust it if you need exact measurements.',
+  'Foto real de Wikimedia Commons, tomada en Lima: no hay fotos libres con daños visibles en Juliaca o Puno. La calibración es aproximada.':
+    'Real photo from Wikimedia Commons, taken in Lima: there are no free photos with visible damage in Juliaca or Puno. The calibration is approximate.',
+  'Foto real · en ángulo': 'Real photo · angled',
+  'Foto real · calle angosta': 'Real photo · narrow street',
+  'Foto real · daño visible (referencia)': 'Real photo · visible damage (reference)',
+  'Juliaca · autopista a Puno': 'Juliaca · highway to Puno',
+  'Juliaca · vía a Huancané': 'Juliaca · road to Huancané',
+  'Puno · Calle Conde de Lemos': 'Puno · Calle Conde de Lemos',
+  'Lima · pista con baches': 'Lima · road with potholes',
+  'Autopista Juliaca–Puno · carril de salida': 'Juliaca–Puno highway · outbound lane',
+  'Autopista Juliaca–Puno · Juliaca': 'Juliaca–Puno highway · Juliaca',
+  'Vía Huancané–Juliaca · tramo recto': 'Huancané–Juliaca road · straight stretch',
+  'Av. El Puerto · calzada con charcos': 'Av. El Puerto · road with puddles',
+  'Calle Conde de Lemos · centro de Puno': 'Calle Conde de Lemos · Puno city centre',
+  'Pista con baches · referencia de daño real': 'Road with potholes · real damage reference',
+  'wizeuce · dominio público': 'wizeuce · public domain',
   'Vehículos por hora adicionales (ambos sentidos) y nivel de tráfico con la obra.': 'Extra vehicles per hour (both directions) and traffic level with the works.',
   'La red absorbe el cierre sin un desvío marcado.': 'The network absorbs the closure without a clear detour.',
   'Cómo se calcula (supuestos del modelo)': 'How it is computed (model assumptions)',

@@ -79,6 +79,20 @@
                   </button>
                 }
               </div>
+              <h3 class="samples-title">{{ 'Fotos reales de Juliaca y Puno' | t }}</h3>
+              <p class="samples-note">{{ 'Pistas reales para probar los modelos Meta. La escala viene estimada; revísala en el siguiente paso.' | t }}</p>
+              <div class="samples-list">
+                @for (s of realSamples; track s.file) {
+                  <button class="sample" type="button" [disabled]="loadingSample()" (click)="useSample(s)">
+                    <img [src]="'samples/' + s.file" alt="" loading="lazy" />
+                    <span class="sample-name">{{ s.label | t }}</span>
+                    <span class="sample-hint">{{ s.hint | t }}</span>
+                    @if (s.credit) {
+                      <span class="sample-credit">{{ s.credit | t }}</span>
+                    }
+                  </button>
+                }
+              </div>
             </section>
           } @else {
             <div class="camera">
@@ -123,6 +137,14 @@
 
         @if (scaleMode() === 'nadir') {
           <div class="nadir">
+            <div class="callout" [attr.role]="looksOblique() ? 'alert' : null">
+              @if (looksOblique()) {
+                <p><b>{{ 'Esta foto parece tomada en ángulo:' | t }}</b> {{ 'se ve cielo en la parte superior. Con «Desde arriba» los daños lejanos saldrían más chicos de lo que son.' | t }}</p>
+              } @else {
+                <p>{{ '«Desde arriba» solo vale si la cámara miraba al suelo en paralelo. Si en la foto se ve el horizonte, la calle al fondo o autos, es una foto en ángulo.' | t }}</p>
+              }
+              <button class="btn btn-secondary btn-sm" type="button" (click)="scaleMode.set('oblique')">{{ 'Cambiar a «En ángulo»' | t }}</button>
+            </div>
             <div class="field">
               <label for="cap-width">{{ 'Ancho visible de la calzada (m)' | t }}</label>
               <input id="cap-width" type="number" inputmode="decimal" min="0.5" max="100" step="0.1" aria-describedby="cap-width-help" [ngModel]="widthM()" (ngModelChange)="widthM.set($event)" />
@@ -237,6 +259,9 @@
                 }
               </select>
               <span class="help">{{ 'Permite simular el cierre de este tramo en el planificador de desvíos.' | t }}</span>
+              @if (segmentId()) {
+                <span class="note warn">{{ 'Elige un tramo solo si la foto es de esa calle. Si no está en la red, déjalo en «Sin asignar» y escribe la calle real en «Ubicación».' | t }}</span>
+              }
             </div>
             <div class="field">
               <label for="cap-notes">{{ 'Notas de campo' | t }}</label>
